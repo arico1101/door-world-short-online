@@ -1,0 +1,198 @@
+/* ショート版（6〜25歳・1〜4人）だけの自動テスト。
+   ここで守るのは、短くしたときにいちばん壊れやすい4つ:
+     1. ウガンダの遺児家庭(w5/w6)が、何人で遊んでも必ず配られる
+     2. 1人プレイで、ロビーからゴール・結果発表まで完走できる
+     3. AAI（留学）のトビラが、遺児家庭の盤面に必ず出てくる／カギ★3に届く
+     4. 25歳のゴールで、奨学金の残額が没収されず、結果に残る
+   使い方: HOST=ws://localhost:8787 node test/short.mjs */
+const HOST = process.env.HOST || "ws://localhost:8787";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let passed = 0, fatal = null;
+const ok = label => { passed++; console.log("  ok　" + label); };
+const room = () => "S" + Math.random().toString(36).slice(2, 7).toUpperCase();
+
+function mk(rm, pid, name) {
+  const c = { pid, name, g: null, you: null, auto: null, watch: null };
+  c.ws = new WebSocket(`${HOST}/ws?room=${rm}&pid=${pid}&name=${name}`);
+  c.ws.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.t !== "state") return;
+    c.g = m.g; c.you = m.you;
+    try { if (c.watch) c.watch(c); if (c.auto) c.auto(c); }
+    catch (e) { fatal = fatal || e; }                  /* onmessage の中で投げても外に届かないので拾っておく */
+  };
+  /* 閉じたあとの error は無視する（閉じた瞬間に上がることがあり、次のテストを巻きこむ） */
+  c.ws.onerror = () => { if (!c.dead) fatal = fatal || new Error("ws error " + pid); };
+  c.send = m => { try { c.ws.send(JSON.stringify(m)); } catch {} };
+  c.close = () => { c.dead = true; try { c.ws.onmessage = null; c.ws.onerror = null; c.ws.close(); } catch {} };
+  return c;
+}
+async function waitFor(c, fn, label, ms = 20000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    if (fatal) throw fatal;
+    if (c.g && fn(c.g)) return c.g;
+    await sleep(20);
+  }
+  throw new Error("TIMEOUT: " + label + " / phase=" + (c.g && c.g.phase));
+}
+/* 入った順で進行役が決まるので、1人ずつ順番に入れる */
+async function joinAll(rm, n) {
+  const cs = [];
+  for (let i = 0; i < n; i++) {
+    const c = mk(rm, "p" + i, "P" + i);
+    await waitFor(c, g => g.players.some(p => p.id === c.pid), "P" + i + " 参加");
+    cs.push(c);
+  }
+  await waitFor(cs[0], g => g.players.length === n, n + "人そろう");
+  return cs;
+}
+/* 通しプレイの自動応答。pick(pd, open) で「選びかたのクセ」を変えられる */
+function autoPlay(pick) {
+  return c => {
+    const g = c.g;
+    if (!g || g.phase !== "play") return;
+    const cur = g.players[g.turn];
+    if (!cur || cur.id !== c.pid) return;
+    const pd = g.pending;
+    if (!pd) return c.send({ t: "roll" });
+    if (pd.kind === "choice") {
+      const open = pd.states.map((s, i) => s === "open" ? i : -1).filter(i => i >= 0);
+      if (!open.length) throw new Error("開けられる選択肢がひとつもない（袋小路）");
+      return c.send({ t: "choose", i: pick ? pick(pd, open) : open[Math.floor(Math.random() * open.length)] });
+    }
+    c.send({ t: "ok" });
+  };
+}
+const rand = (pd, open) => open[Math.floor(Math.random() * open.length)];
+/* 貸与型の奨学金を通るように、あえて「お金を払って学ぶ」「奨学金で進学」を選ぶ */
+const seekLoan = (pd, open) => {
+  const want = open.find(i => pd.opts[i].special === "shogakukin");
+  if (want != null) return want;
+  const manabi = open.find(i => pd.opts[i].tag === "manabi");
+  if (manabi != null) return manabi;
+  return open[Math.floor(Math.random() * open.length)];
+};
+
+/* ============ 1. 家庭カードの配り ============ */
+async function dealTest() {
+  console.log("[1] ウガンダの遺児家庭(w5/w6)が、1〜4人すべてで必ず配られる");
+  const ROUNDS = 40;
+  for (let n = 1; n <= 4; n++) {
+    const rm = room();
+    const cs = await joinAll(rm, n);
+    const tally = {};
+    for (let r = 0; r < ROUNDS; r++) {
+      cs[0].send({ t: "start", heavyOn: true });
+      await waitFor(cs[0], g => g.phase === "cards", `${n}人・${r + 1}回目：配りはじめ`);
+      for (const c of cs) await waitFor(c, () => c.you && c.you.fam, `${n}人・${r + 1}回目：カード受信`);
+      const ids = cs.map(c => c.you.fam.id);
+      if (!ids.some(id => id === "w5" || id === "w6"))
+        throw new Error(`${n}人・${r + 1}回目：w5/w6 が1枚も配られなかった [${ids.join(",")}]`);
+      if (n === 1 && !(ids[0] === "w5" || ids[0] === "w6"))
+        throw new Error(`1人プレイなのに ${ids[0]} が配られた`);
+      if (new Set(ids).size !== ids.length)
+        throw new Error(`同じ家庭カードが重複して配られた [${ids.join(",")}]`);
+      ids.forEach(id => tally[id] = (tally[id] || 0) + 1);
+      cs[0].send({ t: "reset" });
+      await waitFor(cs[0], g => g.phase === "lobby", "ロビーにもどる");
+      for (const c of cs) await waitFor(c, () => !c.you, "カードが手元から消える");
+    }
+    const mix = Object.keys(tally).sort().map(k => `${k}:${tally[k]}`).join(" ");
+    ok(`${n}人 × ${ROUNDS}回：毎回 w5/w6 が入る（内訳 ${mix}）`);
+    cs.forEach(c => c.close());
+  }
+}
+
+/* ============ 2. 1人プレイの完走 ============ */
+async function soloTest() {
+  console.log("[2] 1人プレイで、ロビーからゴール・結果発表まで完走する");
+  const rm = room();
+  const [c] = await joinAll(rm, 1);
+  c.send({ t: "start", heavyOn: true });
+  await waitFor(c, g => g.phase === "cards", "1人でもゲームを開始できる");
+  ok("1人でもロビーから開始できる");
+  c.send({ t: "seen" });
+  await waitFor(c, g => g.phase === "play", "カード確認からプレイへ");
+  c.auto = autoPlay(rand); c.auto(c);
+  await waitFor(c, g => g.phase === "result", "ゴール・結果発表まで到達", 30000);
+  c.auto = null;
+  const p = c.g.players[0];
+  if (!(p.fam.id === "w5" || p.fam.id === "w6")) throw new Error("1人プレイの主人公が遺児家庭でない: " + p.fam.id);
+  if (!p.doorLog || !p.doorLog.length) throw new Error("ネタバラシの材料(doorLog)が空");
+  if (p.open + p.locked + p.unseen === 0) throw new Error("トビラの集計が空");
+  ok(`1人で完走（${p.fam.id} / トビラ${p.doorLog.length}枚・開${p.open} 鍵${p.locked} 見${p.unseen} / ♥${p.happy}）`);
+  c.close();
+}
+
+/* ============ 3+4. AAIのトビラと、奨学金の残額 ============
+   同じ通しプレイから両方を確かめる。奨学金の貸与は家庭カードの配りしだいなので、
+   出るまで何ゲームか回す（出なければ失敗として報告する） */
+const aaiOptIndex = e => e.opts.findIndex(o => o.special === "aai");
+async function playAndCheck(games) {
+  console.log("[3] AAI（留学）のトビラが、遺児家庭の盤面に必ず出る／★3のカギに届く");
+  console.log("[4] 25歳のゴールで、奨学金の残額が没収されない");
+  let orphans = 0, aaiOpen = 0, loanSeen = 0;
+  for (let n = 0; n < games; n++) {
+    const rm = room();
+    const cs = await joinAll(rm, 4);
+    const goals = {};                                  /* ゴールした瞬間の「おかね」と「のこりの奨学金」 */
+    cs[0].watch = c => {
+      const pd = c.g.pending;
+      if (pd && pd.kind === "goal" && !goals[pd.for]) {
+        const p = c.g.players.find(x => x.id === pd.for);
+        goals[pd.for] = { loan: pd.loan, fxMoney: (pd.fx && pd.fx.money) || 0, money: p.money };
+      }
+    };
+    cs[0].send({ t: "start", heavyOn: true });
+    await waitFor(cs[0], g => g.phase === "cards", "カード確認へ");
+    cs.forEach(c => c.send({ t: "seen" }));
+    await waitFor(cs[0], g => g.phase === "play", "プレイ開始");
+    cs.forEach(c => { c.auto = autoPlay(seekLoan); c.auto(c); });
+    await waitFor(cs[0], g => g.phase === "result", `${n + 1}ゲーム目が結果発表まで進む`, 40000);
+    cs.forEach(c => c.auto = null);
+
+    for (const p of cs[0].g.players) {
+      /* --- 3. 遺児家庭には、AAIのトビラが必ず出る --- */
+      const orphan = p.fam.id === "w5" || p.fam.id === "w6";
+      if (orphan) {
+        orphans++;
+        const e = (p.doorLog || []).find(d => aaiOptIndex(d) >= 0);
+        if (!e) throw new Error(`${p.fam.id} の盤面にAAIのトビラが出なかった（留学マスを通っていない）`);
+        if (e.age !== 19) throw new Error(`AAIのトビラが19歳ではなく${e.age}歳に出ている`);
+        const i = aaiOptIndex(e), st = e.chosen === i ? "chosen" : e.states[i];
+        if (st === "locked")
+          throw new Error(`${p.fam.id} がAAIのカギ（★${e.opts[i].req.learn}）に届かなかった。req を下げること`);
+        if (p.fam.id === "w5" && st === "unseen")
+          throw new Error("支援を知っている w5 にAAIが見えていない");
+        if (st === "open" || st === "chosen") aaiOpen++;
+      }
+      /* --- 4. 25歳では奨学金を返し終わらない。没収もしない --- */
+      const gl = goals[p.id];
+      if (gl && gl.loan > 0) {
+        loanSeen++;
+        if (gl.fxMoney) throw new Error(`ゴールで奨学金 ${gl.loan}万 が没収されている（fx.money=${gl.fxMoney}）`);
+        if (p.money !== gl.money) throw new Error(`ゴール後におかねが変わっている ${gl.money} → ${p.money}`);
+        if (p.loan !== gl.loan) throw new Error(`結果発表に残額が引きつがれていない ${gl.loan} → ${p.loan}`);
+      }
+    }
+    cs.forEach(c => c.close());
+    if (loanSeen && n >= 2) break;                     /* 3ゲーム回して貸与型も見られたら十分 */
+  }
+  if (!orphans) throw new Error("遺児家庭が1人も配られなかった（テストが成立していない）");
+  ok(`遺児家庭 ${orphans}人ぶん：全員の19歳にAAIのトビラが出た（うち ${aaiOpen}人はカギが足りていた）`);
+  if (aaiOpen === 0) throw new Error("AAIのカギに届いた人が1人もいない。req を下げること");
+  if (!loanSeen) throw new Error("貸与型の奨学金を背負った人が出ず、残額の確認ができなかった");
+  ok(`貸与型の奨学金 ${loanSeen}人ぶん：25歳でも没収されず、残額が結果発表に残る`);
+}
+
+try {
+  await dealTest();
+  await soloTest();
+  await playAndCheck(8);
+  console.log(`\nOK — ${passed} checks passed`);
+  process.exit(0);
+} catch (e) {
+  console.log("\nFAILED:", e.message);
+  process.exit(1);
+}
