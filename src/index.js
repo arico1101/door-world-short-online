@@ -117,7 +117,7 @@ export class Room {
       t: "state", pid,
       g: {
         phase: this.g.phase, hostId: this.g.hostId, turn: this.g.turn, dice: this.g.dice,
-        pending: this.pendingFor(pid), heavyOn: this.g.heavyOn,
+        pending: this.pendingFor(pid), heavyOn: this.g.heavyOn, flash: this.g.flash || null,
         players: this.g.players.map(p => this.publicPlayer(p, reveal)),
       },
       you: me && me.fam ? {
@@ -218,7 +218,7 @@ export class Room {
     const rest = g.players.filter(p => !p.left);
     if (rest.length) g.players = rest;
     if (g.players.length && !g.players.some(p => p.id === g.hostId)) g.hostId = g.players[0].id;
-    g.phase = "lobby"; g.turn = 0; g.dice = null; g.pending = null; g.deck = [];
+    g.phase = "lobby"; g.turn = 0; g.dice = null; g.pending = null; g.deck = []; g.flash = null;
     g.players.forEach(p => {
       p.seen = false; p.done = false; p.rankAt = null;
       delete p.fam; delete p.left;
@@ -245,12 +245,13 @@ export class Room {
         mult: fam.rural ? 5 : 10, aai: false, loan: 0,
         open: 0, locked: 0, unseen: 0, doorLog: [],
         shienDiscount: false, shienUsed: false, deaiUsed: false,
-        hadHeavy: false, disasterTurns: 0, letterIn: null,
+        hadHeavy: false, disasterTurns: 0, letterIn: null, wageShown: false,
         done: false, rankAt: null, seen: false,
       });
     });
     g.heavyOn = heavyOn;
     g.deck = [];
+    g.flash = null;
     g.phase = "cards";
   }
 
@@ -287,6 +288,18 @@ export class Room {
       note: note || null, pnote: pnote || null, fx: fx || {},
     };
   }
+  /* おしごと・しゅっぴの事務処理はOK待ちにせず、効果を反映してすぐ次の番へ。
+     画面には flash として流す（モーダルではなくトースト表示）。25分に収めるための短縮版だけの仕組み */
+  setFlash(type, title, note, fx) {
+    const p = this.cur();
+    R.applyFx(p, fx || {});
+    this.g.flash = {
+      seq: (this.g.flashSeq = (this.g.flashSeq || 0) + 1),
+      for: p.id, name: p.name, color: p.color, type,
+      title, note: note || null, fx: fx || {},
+    };
+    this.endTurn();
+  }
   setChoice(def, type, skipCount) {
     const p = this.cur();
     const states = def.opts.map(o => {
@@ -309,38 +322,45 @@ export class Room {
   resolveSquare() {
     const g = this.g, p = this.cur(), sq = R.SQUARES[p.pos];
     if (sq.t === "income") {
-      let amt, title, note = null;
       if (sq.fixed != null) {
-        amt = sq.fixed;
-        title = sq.name;
-        note = bi("はじめての、自分のかせぎ！", "Your first money of your own!");
-      } else {
-        amt = p.fam.wage + p.learn * p.mult + p.allow;
-        const job = R.jobTitle(p);
-        title = bi(`${job.ic} ${R.AGES[p.pos]}歳・いまのしごと：${job.t.ja}`, `${job.ic} Age ${R.AGES[p.pos]} · Current job: ${job.t.en}`);
-        note = bi(
-          `かせぎは <b>基本給${fmJa(p.fam.wage)} ＋ まなび×${fmJa(p.mult)}${p.allow > 0 ? " ＋ 仕送り" + fmJa(p.allow) : ""}</b><br>まなびが増えると、しごともかせぎも変わっていく`,
-          `Pay = <b>base ${fmEn(p.fam.wage)} + Learn × ${fmEn(p.mult)}${p.allow > 0 ? " + allowance " + fmEn(p.allow) : ""}</b><br>As learning grows, your job and pay change too`);
+        /* はじめてのお手伝いは、子ども時代の一拍としてモーダルのまま残す */
+        this.setInfo("income", sq.name, bi("はじめての、自分のかせぎ！", "Your first money of your own!"), { money: sq.fixed });
+        return;
+      }
+      let amt = p.fam.wage + p.learn * p.mult + p.allow;
+      const job = R.jobTitle(p);
+      const title = bi(`${job.ic} ${R.AGES[p.pos]}歳・いまのしごと：${job.t.ja}`, `${job.ic} Age ${R.AGES[p.pos]} · Current job: ${job.t.en}`);
+      /* 毎回変わる情報（災害・返済）は、自動送りのトーストにも必ず出す */
+      let extra = null;
+      if (p.disasterTurns > 0) {
+        amt -= 10;
+        extra = join(extra, bi(`⚠️ 災害の影響で −10万（あと${p.disasterTurns}ターン）`, `⚠️ Disaster: −${fmEn(10)} (${p.disasterTurns} turns left)`));
+      }
+      if (p.loan > 0) {
+        const pay = Math.min(6, p.loan);
+        p.loan -= pay; amt -= pay;
+        extra = join(extra, bi(`🎓 奨学金の返済 −${pay}万（のこり${p.loan}万）`, `🎓 Scholarship repayment −${fmEn(pay)} (${fmEn(p.loan)} left)`));
+      }
+      if (!p.wageShown) {
+        /* かせぎの式と「生まれた場所で基本給がちがう」は学びの核なので、最初の1回はモーダルでじっくり見せる */
+        p.wageShown = true;
+        let note = bi(
+          `かせぎは <b>基本給${fmJa(p.fam.wage)} ＋ まなび×${fmJa(p.mult)}${p.allow > 0 ? " ＋ 仕送り" + fmJa(p.allow) : ""}</b><br>まなびが増えると、しごともかせぎも変わっていく<br>（このあとの おしごと・しゅっぴのマスは、止まらずに自動で流れます）`,
+          `Pay = <b>base ${fmEn(p.fam.wage)} + Learn × ${fmEn(p.mult)}${p.allow > 0 ? " + allowance " + fmEn(p.allow) : ""}</b><br>As learning grows, your job and pay change too<br>(from here on, Work and Expense squares resolve automatically)`);
         if (p.fam.wage < 20) note = join(note, bi(
           `🌍 同じはたらきでも、生まれた場所で基本給はちがう——<br>じつは現実のウガンダの平均収入は、日本の<b>約20分の1</b>。このゲームでは、いっしょに遊べるように差をゆるめている。`,
           `🌍 Same work, different base pay — it depends on where you were born.<br>In reality, average income in Uganda is about <b>1/20th</b> of Japan's. This game softens the gap so everyone can play the same board.`));
         if (p.mult < 10) note = join(note, bi(
           `📉 いまの場所では、まなびがかせぎにつながりにくい（★×5万）。<b>スキルが活きる場</b>につながるトビラがあれば——`,
           `📉 Where you live, learning hardly turns into pay (★×${fmEn(5)}). If only a door led to <b>a place where skills matter</b>—`));
-        if (p.disasterTurns > 0) {
-          amt -= 10;
-          note = join(note, bi(`⚠️ 災害の影響で −10万（あと${p.disasterTurns}ターン）`, `⚠️ Disaster: −${fmEn(10)} (${p.disasterTurns} turns left)`));
-        }
-        if (p.loan > 0) {
-          const pay = Math.min(6, p.loan);
-          p.loan -= pay; amt -= pay;
-          note = join(note, bi(`🎓 奨学金の返済 −${pay}万（のこり${p.loan}万）`, `🎓 Scholarship repayment −${fmEn(pay)} (${fmEn(p.loan)} left)`));
-        }
+        if (extra) note = join(note, extra);
+        this.setInfo("income", title, note, { money: amt });
+      } else {
+        this.setFlash("income", title, extra, { money: amt });
       }
-      this.setInfo("income", title, note, { money: amt });
     }
     else if (sq.t === "cost") {
-      this.setInfo("cost", sq.name, bi("生きているとお金はかかる。固定費、だいじ。", "Living costs money. Watch those fixed costs."), { money: -sq.amt });
+      this.setFlash("cost", sq.name, null, { money: -sq.amt });
     }
     else if (sq.t === "event") {
       /* できごとマスが3つしかないので、しきいを本番版の8から6に下げる（16歳のマスから起こりうる） */

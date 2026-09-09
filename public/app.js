@@ -340,6 +340,22 @@ const watchHead = a => `<div class="watch-head"><span class="p-dot" style="backg
 const privNote = v => (v && (!Array.isArray(v) || v.length))
   ? `<div class="m-note priv">${(Array.isArray(v) ? v.map(L).join("<br>") : L(v))}</div>` : "";
 
+/* ---------- 自動送りのトースト（おしごと・しゅっぴはOK待ちにしない） ---------- */
+let flashSeq = 0, flashTimer = null;
+function renderFlash() {
+  const f = G && G.flash;
+  if (!f || f.seq === flashSeq) return;
+  flashSeq = f.seq;
+  const el = $("toast");
+  el.innerHTML = `<div class="t-head"><span class="p-dot" style="background:${f.color}"></span><b>${f.name}</b>　${L(f.title)}</div>
+    ${f.note ? `<div class="t-note">${L(f.note)}</div>` : ""}
+    ${fxChips(f.fx)}`;
+  el.classList.add("show");
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => el.classList.remove("show"), 6000);
+  el.onclick = () => el.classList.remove("show");
+}
+
 /* ---------- 保留中のできごと（サーバーから来る） ---------- */
 function renderPending() {
   const pd = G.pending;
@@ -548,9 +564,10 @@ function render() {
     $("diceLabel").textContent = mine
       ? (child ? (ja() ? "🧒 一歩すすむ" : "🧒 Step forward") : (ja() ? "サイコロを回す" : "Roll the dice"))
       : (ja() ? `${cur.name} さんの番` : `${cur.name}'s turn`);
+    renderFlash();
     renderPending();
   }
-  else if (G.phase === "result") { showScreen("result"); closeModal(); closeHost(); showResult(); }
+  else if (G.phase === "result") { showScreen("result"); closeModal(); closeHost(); $("toast").classList.remove("show"); showResult(); }
 }
 
 /* 進行役だけに🛠を出し、パネルを開いたままなら中身を最新にする */

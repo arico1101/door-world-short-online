@@ -83,8 +83,9 @@ const CHAPTERS = [
 ];
 
 /* 盤面 24マス（ショート版）
-   ★ 留学（AAI）のマスは stop:true。サイコロで飛びこされると、
-     あしなが事業そのものを表すいちばん大事なトビラが盤面から消えてしまうため。 */
+   ★ トビラのマスはすべて stop:true。サイコロで飛びこされると出会うトビラが
+     3〜6枚とぶれて、1人プレイのネタバラシが薄くなるため、全員が6枚全部と出会う。
+     とくに留学（AAI）は、あしなが事業そのものを表すいちばん大事な一枚。 */
 const SQUARES = [
   {t:"start", name:{ja:"スタート",en:"Start"}},
   {t:"income", name:{ja:"はじめてのお手伝い",en:"First chores"}, fixed:15, stop:true},
@@ -95,18 +96,18 @@ const SQUARES = [
   {t:"event"},
   {t:"cost", name:{ja:"学用品・制服代",en:"School supplies & uniform"}, amt:20},
   {t:"learn"},
-  {t:"choice", name:{ja:"くらし",en:"Home life"}, key:"kurashi"},
+  {t:"choice", name:{ja:"くらし",en:"Home life"}, key:"kurashi", stop:true},
   {t:"income", name:{ja:"おしごと",en:"Work"}},
   {t:"choice", name:{ja:"留学",en:"Abroad"}, key:"kaigai", stop:true},
   {t:"cost", name:{ja:"急な病気の医療費",en:"Sudden medical bill"}, amt:30},
-  {t:"choice", name:{ja:"まち",en:"Town"}, key:"machi"},
+  {t:"choice", name:{ja:"まち",en:"Town"}, key:"machi", stop:true},
   {t:"income", name:{ja:"おしごと",en:"Work"}},
   {t:"learn"},
   {t:"event"},
-  {t:"choice", name:{ja:"技術",en:"Skills"}, key:"ginou"},
+  {t:"choice", name:{ja:"技術",en:"Skills"}, key:"ginou", stop:true},
   {t:"income", name:{ja:"おしごと",en:"Work"}},
   {t:"cost", name:{ja:"家族のための出費",en:"Family expenses"}, amt:40},
-  {t:"choice", name:{ja:"しごと",en:"Career"}, key:"shigoto"},
+  {t:"choice", name:{ja:"しごと",en:"Career"}, key:"shigoto", stop:true},
   {t:"learn"},
   {t:"income", name:{ja:"おしごと",en:"Work"}},
   {t:"goal", name:{ja:"ゴール",en:"Goal"}},

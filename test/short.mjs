@@ -65,6 +65,13 @@ function autoPlay(pick) {
   };
 }
 const rand = (pd, open) => open[Math.floor(Math.random() * open.length)];
+/* 全トビラのマスが stop:true なので、6枚全部と必ず出会う（1人プレイのネタバラシを濃くするため） */
+const SIX_DOORS = ["進学のトビラ", "くらしのトビラ", "留学のトビラ", "まちのトビラ", "技術のトビラ", "しごとのトビラ"];
+function checkSixDoors(p) {
+  const titles = (p.doorLog || []).map(d => (d.title && d.title.ja) || "");
+  for (const t of SIX_DOORS)
+    if (!titles.includes(t)) throw new Error(`${p.name}(${p.fam.id}) が「${t}」と出会っていない [${titles.join("、")}]`);
+}
 /* 貸与型の奨学金を通るように、あえて「お金を払って学ぶ」「奨学金で進学」を選ぶ */
 const seekLoan = (pd, open) => {
   const want = open.find(i => pd.opts[i].special === "shogakukin");
@@ -121,7 +128,8 @@ async function soloTest() {
   if (!(p.fam.id === "w5" || p.fam.id === "w6")) throw new Error("1人プレイの主人公が遺児家庭でない: " + p.fam.id);
   if (!p.doorLog || !p.doorLog.length) throw new Error("ネタバラシの材料(doorLog)が空");
   if (p.open + p.locked + p.unseen === 0) throw new Error("トビラの集計が空");
-  ok(`1人で完走（${p.fam.id} / トビラ${p.doorLog.length}枚・開${p.open} 鍵${p.locked} 見${p.unseen} / ♥${p.happy}）`);
+  checkSixDoors(p);
+  ok(`1人で完走・6枚のトビラ全部と出会った（${p.fam.id} / 記録${p.doorLog.length}件・開${p.open} 鍵${p.locked} 見${p.unseen} / ♥${p.happy}）`);
   c.close();
 }
 
@@ -153,6 +161,7 @@ async function playAndCheck(games) {
     cs.forEach(c => c.auto = null);
 
     for (const p of cs[0].g.players) {
+      checkSixDoors(p);                                /* 全員が6枚のトビラ全部と出会う */
       /* --- 3. 遺児家庭には、AAIのトビラが必ず出る --- */
       const orphan = p.fam.id === "w5" || p.fam.id === "w6";
       if (orphan) {
