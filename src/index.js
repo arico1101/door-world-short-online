@@ -90,7 +90,7 @@ export class Room {
       done: p.done, rankAt: p.rankAt, seen: p.seen, left: !!p.left,
     };
     if (reveal) {                                       /* 結果発表で全公開 */
-      o.fam = p.fam; o.perk = p.perk; o.mult = p.mult; o.aai = p.aai;
+      o.fam = p.fam; o.perk = p.perk; o.mult = p.mult; o.aai = p.aai; o.univ = p.univ;
       o.hidden = p.hidden; o.deaiUsed = p.deaiUsed; o.initMoney = p.initMoney;
       o.open = p.open; o.locked = p.locked; o.unseen = p.unseen; o.doorLog = p.doorLog;
       o.loan = p.loan;                                  /* 25歳では返し終わらない。残額を結果発表に出す */
@@ -242,7 +242,7 @@ export class Room {
         fam, perk: fam.perk, hidden: [...fam.hide],
         pos: 0, money: fam.money, initMoney: fam.money, allow: fam.allow,
         learn: 1 + ((fam.perk === "kinben" || fam.perk === "kokusai") ? 1 : 0), happy: 0,
-        mult: fam.rural ? 5 : 10, aai: false, loan: 0,
+        mult: fam.rural ? 5 : 10, aai: false, univ: false, loan: 0,
         open: 0, locked: 0, unseen: 0, doorLog: [],
         shienDiscount: false, shienUsed: false, deaiUsed: false,
         hadHeavy: false, disasterTurns: 0, letterIn: null, wageShown: false,
@@ -315,7 +315,7 @@ export class Room {
       kind: "choice", for: p.id, type: type || "choice", def: { title: def.title, body: def.body, variant: def.variant, heavy: !!def.heavy },
       opts: def.opts, states,
       /* カギの表示計算に使う。ここに出る値はどれも選択画面で見えているもの */
-      actor: { name: p.name, money: p.money, learn: p.learn, pos: p.pos, perk: p.perk, mult: p.mult, shienDiscount: p.shienDiscount },
+      actor: { name: p.name, money: p.money, learn: p.learn, pos: p.pos, perk: p.perk, mult: p.mult, shienDiscount: p.shienDiscount, univ: p.univ },
     };
   }
 
@@ -437,6 +437,11 @@ export class Room {
       const dn = R.checkDeai(p); if (dn) pnotes.push(dn);
     }
     if (o.special === "letter") p.letterIn = 2;
+    if (o.univ && !p.univ) {
+      p.univ = true;
+      notes.push(bi("🎓 大学へ——ここから先、<b>大学を出た人にだけ見えている道</b>がある。",
+                    "🎓 University — from here, <b>some roads continue only for those who finish it</b>."));
+    }
     if (o.unlock && p.mult < 10) {
       p.mult = 10;
       notes.push(bi("🔓 スキルが活きる場につながった！ これから、まなびが <b>★×10万</b> でかせぎになる。",

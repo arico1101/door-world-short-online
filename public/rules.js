@@ -159,13 +159,22 @@ function choiceDef(key, p){
     case "shigoto": return {
       title:{ja:"しごとのトビラ",en:"The Career Door"}, body:{ja:"新しいしごとの募集を見つけた！",en:"You found a new job opening!"},
       opts:[
+        /* 19歳で大学まで行けた人にだけ、その先の道がつづいている。
+           ？？？（見えない）ではなく🔒（カギ不足）で全員に見せるのは、
+           「知らなかった」のではなく「19歳の選択が24歳の選択肢を決めていた」ことを見せるため。
+           このカギだけは、24歳の時点ではもう取りに行けない。 */
+        {t:{ja:"大学院に進んで、研究をつづける",en:"Go on to graduate school"},
+         d:{ja:"学部で見つけた問いを、もっと深くへ。大学を出た人にだけ、この道はつづいている",
+            en:"Take the question you found as an undergraduate deeper — a road that continues only for those who finished university"},
+         req:{univ:true, learn:6}, fx:{money:-50, learn:3, happy:3}},
         {t:{ja:"国際機関・NGOで働く",en:"Work for an international org / NGO"}, d:{ja:"まなびの蓄積が採用の決め手に",en:"Your learning is what gets you hired"}, tag:"career", req:{learn:5}, fx:{learn:1, happy:2}, unlock:true},
         {t:{ja:"給料の高いしごとに移る",en:"Move to a better-paid job"}, d:{ja:"スキルを高く買ってもらう",en:"Sell your skills higher"}, req:{learn:4}, fx:{money:100}},
         {t:{ja:"いまのしごとを続ける",en:"Keep your current job"}, d:{ja:"安定して働き、少し昇給した",en:"Steady work, a small raise"}, req:{}, fx:{money:30}},
       ]};
     case "kaigai": {
       const base = [
-        {t:{ja:"海外の大学に留学する",en:"Study at a university abroad"}, d:{ja:"言葉の壁をこえた先に、新しい世界",en:"Beyond the language barrier, a new world"}, tag:"global", req:{money:150, learn:4}, fx:{money:-150, learn:2, happy:3}, unlock:true},
+        /* univ:true = この選択で「大学に行けた」ことになる。24歳の大学院のカギになる */
+        {t:{ja:"海外の大学に留学する",en:"Study at a university abroad"}, d:{ja:"言葉の壁をこえた先に、新しい世界",en:"Beyond the language barrier, a new world"}, tag:"global", req:{money:150, learn:4}, fx:{money:-150, learn:2, happy:3}, unlock:true, univ:true},
         {t:{ja:"外国で働いてみる",en:"Work in another country"}, d:{ja:"仕送りで、遠くの家族も支えられる",en:"Send money home to your family"}, req:{learn:3}, fx:{money:80, happy:1}, unlock:true},
         {t:{ja:"自分の国で暮らしつづける",en:"Stay in your own country"}, d:{ja:"ここにも、いい暮らしはある",en:"There is a good life here too"}, req:{}, fx:{happy:1}},
       ];
@@ -179,7 +188,7 @@ function choiceDef(key, p){
         opts:[
           {t:{ja:"AAI——遺児のための留学奨学金に挑戦する",en:"AAI — try for the orphans' study-abroad scholarship"},
            d:{ja:"学費も渡航費も支援。カギはお金ではなく、まなびと『志』",en:"Fees and travel covered. The keys are learning and a mission — not money"},
-           tag:"shien", req:{learn:3}, fx:{learn:2, happy:3}, special:"aai", unlock:true},
+           tag:"shien", req:{learn:3}, fx:{learn:2, happy:3}, special:"aai", unlock:true, univ:true},
           ...base,
         ]};
       return {
@@ -321,6 +330,7 @@ function effectiveLearnReq(p, o){
   return l;
 }
 function meetsReq(p, o){
+  if(o.req.univ && !p.univ) return false;   /* 大学を出ていること。24歳ではもう取り返せないカギ */
   const em = effectiveMoneyReq(p, o);
   if(em > 0 && em > p.money) return false;  /* カギなし(0円)の選択肢は借金中でも選べる */
   if(effectiveLearnReq(p, o) > p.learn) return false;

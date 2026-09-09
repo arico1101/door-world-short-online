@@ -322,6 +322,7 @@ function fxChips(fx) {
 }
 function reqLabel(p, o) {
   const parts = [];
+  if (o.req.univ) parts.push(ja() ? "大学を出ていること" : "a university degree");
   const em = R.effectiveMoneyReq(p, o), el = R.effectiveLearnReq(p, o);
   if (o.req.money) {
     const memo = [];
@@ -418,8 +419,12 @@ function renderPending() {
       const loan = o.special === "shogakukin" && !(p.shienDiscount || p.perk === "shienPro");
       const cost = ((efx || cut) && !redundant)
         ? `<span class="d-key d-cost ${efx < 0 ? "minus" : "plus"}">${cut ? "🎗" : (efx < 0 ? "💸" : "💰")} ${ja() ? "おかね" : "Money"} ${cut ? `<s>${fm(raw)}</s>→` : ""}${efx > 0 ? "+" : ""}${fm(efx)}${loan ? (ja() ? "＋返済" : " + repayment") : ""}</span>` : "";
-      const short = o.req.maxMoney != null && p.money >= o.req.maxMoney
-        ? (ja() ? "（対象外…）" : " (not eligible…)") : (ja() ? "（たりない…）" : " (not enough…)");
+      /* 何が足りないのかを取りちがえないように、理由ごとに書きわける。
+         大学のカギだけは、いまさら取りに行けないもの */
+      const short = (o.req.univ && !p.univ)
+        ? (ja() ? "（大学に行っていない…）" : " (no degree…)")
+        : (o.req.maxMoney != null && p.money >= o.req.maxMoney
+          ? (ja() ? "（対象外…）" : " (not eligible…)") : (ja() ? "（たりない…）" : " (not enough…)"));
       return `<button class="door" data-i="${i}" ${ok && mine ? "" : "disabled"}>
         <span class="d-icon">${ok ? "🚪" : "🔒"}</span>
         <span class="d-main">
@@ -663,6 +668,7 @@ function showResult() {
 /* ---------- ネタバラシ ---------- */
 function rawReqLabel(o) {
   const parts = [];
+  if (o.req.univ) parts.push(ja() ? "大学を出ていること" : "university degree");
   if (o.req.money) parts.push(`${ja() ? "おかね" : "Money "}${fm(o.req.money)}`);
   if (o.req.learn) parts.push(`★${o.req.learn}`);
   if (o.req.maxMoney != null) parts.push(ja() ? `所得制限おかね${fm(o.req.maxMoney)}未満` : `income limit: under ${fm(o.req.maxMoney)}`);

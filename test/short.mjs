@@ -72,10 +72,13 @@ function checkSixDoors(p) {
   for (const t of SIX_DOORS)
     if (!titles.includes(t)) throw new Error(`${p.name}(${p.fam.id}) が「${t}」と出会っていない [${titles.join("、")}]`);
 }
-/* 貸与型の奨学金を通るように、あえて「お金を払って学ぶ」「奨学金で進学」を選ぶ */
+/* 貸与型の奨学金と、大学（19歳）の道を必ず通るように選ぶ。
+   奨学金は15歳・大学は19歳の別のトビラなので、優先順位が競合することはない */
 const seekLoan = (pd, open) => {
-  const want = open.find(i => pd.opts[i].special === "shogakukin");
-  if (want != null) return want;
+  const loan = open.find(i => pd.opts[i].special === "shogakukin");
+  if (loan != null) return loan;
+  const univ = open.find(i => pd.opts[i].univ);
+  if (univ != null) return univ;
   const manabi = open.find(i => pd.opts[i].tag === "manabi");
   if (manabi != null) return manabi;
   return open[Math.floor(Math.random() * open.length)];
@@ -140,7 +143,8 @@ const aaiOptIndex = e => e.opts.findIndex(o => o.special === "aai");
 async function playAndCheck(games) {
   console.log("[3] AAI（留学）のトビラが、遺児家庭の盤面に必ず出る／★3のカギに届く");
   console.log("[4] 25歳のゴールで、奨学金の残額が没収されない");
-  let orphans = 0, aaiOpen = 0, loanSeen = 0;
+  console.log("[5] 24歳の大学院は、19歳で大学に行けた人にだけ開く（ほかの人には🔒で見える）");
+  let orphans = 0, aaiOpen = 0, loanSeen = 0, univSeen = 0, gradOpen = 0;
   for (let n = 0; n < games; n++) {
     const rm = room();
     const cs = await joinAll(rm, 4);
@@ -176,6 +180,16 @@ async function playAndCheck(games) {
           throw new Error("支援を知っている w5 にAAIが見えていない");
         if (st === "open" || st === "chosen") aaiOpen++;
       }
+      /* --- 5. 24歳の大学院は、大学を出た人だけが開けられる --- */
+      const job = (p.doorLog || []).find(d => d.title && d.title.ja === "しごとのトビラ");
+      const gi = job.opts.findIndex(o => o.req && o.req.univ);
+      if (gi < 0) throw new Error("24歳のしごとのトビラに大学院の選択肢がない");
+      const gst = job.chosen === gi ? "chosen" : job.states[gi];
+      if (gst === "unseen") throw new Error("大学院が？？？になっている（🔒で全員に見せるはず）");
+      if (!p.univ && gst !== "locked")
+        throw new Error(`大学に行っていない ${p.fam.id} の大学院が ${gst} になっている`);
+      if (p.univ) { univSeen++; if (gst !== "locked") gradOpen++; }
+
       /* --- 4. 25歳では奨学金を返し終わらない。没収もしない --- */
       const gl = goals[p.id];
       if (gl && gl.loan > 0) {
@@ -193,6 +207,8 @@ async function playAndCheck(games) {
   if (aaiOpen === 0) throw new Error("AAIのカギに届いた人が1人もいない。req を下げること");
   if (!loanSeen) throw new Error("貸与型の奨学金を背負った人が出ず、残額の確認ができなかった");
   ok(`貸与型の奨学金 ${loanSeen}人ぶん：25歳でも没収されず、残額が結果発表に残る`);
+  if (!univSeen) throw new Error("大学まで行けた人が出ず、大学院の確認ができなかった");
+  ok(`大学に行けた ${univSeen}人ぶん：24歳の大学院が開いた（うちカギ★6も足りていた ${gradOpen}人）／行けなかった人には🔒で見えている`);
 }
 
 try {
