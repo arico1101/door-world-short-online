@@ -85,7 +85,7 @@ const CHAPTERS = [
 /* 盤面 24マス（ショート版）
    ★ トビラのマスはすべて stop:true。サイコロで飛びこされると出会うトビラが
      3〜6枚とぶれて、1人プレイのネタバラシが薄くなるため、全員が6枚全部と出会う。
-     とくに留学（AAI）は、あしなが事業そのものを表すいちばん大事な一枚。 */
+     とくに大学（AAI）は、あしなが事業そのものを表すいちばん大事な一枚。 */
 const SQUARES = [
   {t:"start", name:{ja:"スタート",en:"Start"}},
   {t:"income", name:{ja:"はじめてのお手伝い",en:"First chores"}, fixed:15, stop:true},
@@ -98,7 +98,7 @@ const SQUARES = [
   {t:"learn"},
   {t:"choice", name:{ja:"くらし",en:"Home life"}, key:"kurashi", stop:true},
   {t:"income", name:{ja:"おしごと",en:"Work"}},
-  {t:"choice", name:{ja:"留学",en:"Abroad"}, key:"kaigai", stop:true},
+  {t:"choice", name:{ja:"大学",en:"University"}, key:"kaigai", stop:true},
   {t:"cost", name:{ja:"急な病気の医療費",en:"Sudden medical bill"}, amt:30},
   {t:"choice", name:{ja:"まち",en:"Town"}, key:"machi", stop:true},
   {t:"income", name:{ja:"おしごと",en:"Work"}},
@@ -175,16 +175,20 @@ function choiceDef(key, p){
       const base = [
         /* univ:true = この選択で「大学に行けた」ことになる。24歳の大学院のカギになる */
         {t:{ja:"海外の大学に留学する",en:"Study at a university abroad"}, d:{ja:"言葉の壁をこえた先に、新しい世界",en:"Beyond the language barrier, a new world"}, tag:"global", req:{money:150, learn:4}, fx:{money:-150, learn:2, happy:3}, unlock:true, univ:true},
+        /* ウガンダにも大学はある（マケレレなど）。壁は「知らないこと」ではなく学費なので、
+           tag は付けず全員に見せ、おかねのカギだけで差がつくようにする。
+           unlock:true = 国内の大学でも、まなびがかせぎになる場につながる */
+        {t:{ja:"自分の国の大学に進む",en:"Go to a university in your own country"}, d:{ja:"国を出なくても、大学はある。壁になるのは学費のほう",en:"There are universities at home too. What stands in the way is the fees"}, req:{money:120, learn:3}, fx:{money:-120, learn:2, happy:2}, unlock:true, univ:true},
         {t:{ja:"外国で働いてみる",en:"Work in another country"}, d:{ja:"仕送りで、遠くの家族も支えられる",en:"Send money home to your family"}, req:{learn:3}, fx:{money:80, happy:1}, unlock:true},
         {t:{ja:"自分の国で暮らしつづける",en:"Stay in your own country"}, d:{ja:"ここにも、いい暮らしはある",en:"There is a good life here too"}, req:{}, fx:{happy:1}},
       ];
-      /* 遺児家庭だけに、あしながAAI（お金のカギがない留学奨学金）の扉が存在する。
+      /* 遺児家庭だけに、あしながAAI（お金のカギがない大学奨学金）の扉が存在する。
          ショート版では19歳（中等教育を終えた直後＝実際のAAIの典型的な応募時期）に置いたので、
          カギは本番版の ★5 から ★3 に下げてある。19歳時点で★5はほぼ届かず、
          常に🔒の扉になってしまうため。 */
       if(p.perk === "shienPro" || p.perk === "deai") return {
-        title:{ja:"留学のトビラ",en:"The Study-Abroad Door"}, variant:{ja:"遺児家庭",en:"orphan families"},
-        body:{ja:"中等教育を終えた19歳。海の向こうで学んでみたい気持ちがふくらむ。",en:"You're 19, just out of secondary school. You want to learn across the sea."},
+        title:{ja:"大学のトビラ",en:"The University Door"}, variant:{ja:"遺児家庭",en:"orphan families"},
+        body:{ja:"中等教育を終えた19歳。大学へ進む道がある——国の中にも、海の向こうにも。",en:"You're 19, just out of secondary school. Roads lead on to university — at home, and across the sea."},
         opts:[
           {t:{ja:"AAI——遺児のための留学奨学金に挑戦する",en:"AAI — try for the orphans' study-abroad scholarship"},
            d:{ja:"学費も渡航費も支援。カギはお金ではなく、まなびと『志』",en:"Fees and travel covered. The keys are learning and a mission — not money"},
@@ -192,7 +196,8 @@ function choiceDef(key, p){
           ...base,
         ]};
       return {
-        title:{ja:"留学のトビラ",en:"The Study-Abroad Door"}, body:{ja:"海の向こうで学んでみたい気持ちがふくらむ。",en:"You want to learn across the sea."},
+        title:{ja:"大学のトビラ",en:"The University Door"},
+        body:{ja:"中等教育を終えた19歳。大学へ進む道がある——国の中にも、海の向こうにも。",en:"You're 19, just out of secondary school. Roads lead on to university — at home, and across the sea."},
         opts:base};
     }
     case "manabinaoshi": return {
@@ -343,36 +348,36 @@ function meetsReq(p, o){
      本番版（35歳）とちがい、人生はまだ途中——「ここで終わりではない」ことを残す。 */
 const ENDINGS = {
   village:[  /* ウガンダ育ち・★が実る場に出会えないまま */
-    {ja:"日が昇る前に起きて、畑としごとのあいだを行き来する毎日は、子どものころとあまり変わらない。選べた記憶より、選べなかった記憶のほうが多い。——でも、それはあなたのせいだったのだろうか？",
-     en:"You still rise before the sun and move between the field and work, much as you did as a child. You remember far more moments you couldn't choose than ones you could. — But was that really your fault?"},
-    {ja:"畑としごとを行き来する毎日。楽ではないけれど、困ったとき頼れる顔がいくつも浮かぶ。開けられなかった扉のことを、ときどき思い出す。——人生は、まだ半分も来ていない。",
-     en:"Your days move between the field and work. It isn't easy, but when trouble comes, many faces come to mind. Now and then you think of the doors you couldn't open. — Life is not even half over."},
-    {ja:"村はずれの小さな家に、夕方になると近所の子が集まってくる。畑とラジオと、にぎやかな食卓——あなたが開けてきた扉のむこうに、この暮らしがある。",
-     en:"In the small house at the edge of the village, the neighbors' kids gather every evening. The field, the radio, a lively table — beyond the doors you opened, this life was waiting."},
+    {ja:"一日は、いまも水くみから始まる。子どものころと同じ道を、同じ時間に歩いている。選べた記憶より、選べなかった記憶のほうが多い。——でも、それはあなたのせいだったのだろうか？",
+     en:"Your day still begins by fetching water. The same road, at the same hour, as when you were a child. You remember far more moments you couldn't choose than ones you could. — But was that really your fault?"},
+    {ja:"畑としごとを行き来する毎日。楽ではないけれど、困ったときに頼れる顔がいくつも浮かぶ。ときどき、開けられなかった扉のことを思い出す。——まだ25歳。人生は、半分も来ていない。",
+     en:"Your days move between the field and work. It isn't easy, but when trouble comes, many faces come to mind. Now and then you think of the doors that wouldn't open. — You're twenty-five. Life is not even half over."},
+    {ja:"畑を継ぎ、市場に自分の場所をもった。夕方になると、近所の子が宿題をかかえて集まってくる。大きな扉ではなかったけれど、開けてきた一枚一枚が、いまの毎日をつくっている。",
+     en:"You've taken over the field and hold your own spot at the market. In the evening, the neighbors' kids turn up with their homework. None of the doors you opened were grand — but every one of them built the days you have."},
   ],
-  city:[  /* ウガンダ育ち・カンパラや海外など「スキルが活きる場」に出た */
-    {ja:"たしかに都市に出た。稼ぎも増えた。それでも、開けたかった扉に手が届いたかというと——都会は、カギの値段も高かった。",
-     en:"You did make it to the city, and you earn more now. But did the doors you longed for come within reach? — In the city, even keys have city prices."},
-    {ja:"都市のしごとに慣れ、暮らし向きは村にいたころと別ものになった。ただ、にぎやかな通りでふと、村の夕方の音を思い出すことがある。",
-     en:"You've settled into city work, and life looks nothing like the village years. Yet on a noisy street, you sometimes hear the evening sounds of home."},
-    {ja:"カンパラのアパートには電気も水道もある。村を出た日に見た景色が、いまは日常だ。月末には故郷に仕送りをして、長い休みには土の道を歩いて帰る。",
-     en:"Your Kampala apartment has electricity and running water. The view that amazed you the day you left the village is everyday life now. You send money home at month's end, and walk the dirt road back for the holidays."},
+  city:[  /* ウガンダ育ち・大学や都市など「まなびが実る場」につながった */
+    {ja:"たしかに、まなびがかせぎになる場所にはたどりついた。それでも、開けたかった扉に手が届いたかというと——その場所は、カギの値段も高かった。",
+     en:"You did reach a place where learning turns into pay. But did the doors you longed for come within reach? — In that place, the keys cost more too."},
+    {ja:"しごとに慣れ、暮らし向きは村にいたころと別ものになった。ただ、にぎやかな通りでふと、村の夕方の音を思い出すことがある。ここからどこへ行くのかは、まだ決めていない。",
+     en:"You've settled into the work, and life looks nothing like the village years. Yet on a busy street, you sometimes hear the evening sounds of home. Where you go from here, you haven't decided yet."},
+    {ja:"カンパラのアパートには電気も水道もある。村を出た日に息をのんだ景色が、いまは日常だ。月末には仕送りをして、長い休みには土の道を歩いて帰る。次に開ける扉のことを、もう考えている。",
+     en:"Your Kampala apartment has electricity and running water. The view that took your breath away the day you left the village is everyday life now. You send money home at month's end and walk the dirt road back for the holidays. Already, you're thinking about the next door."},
   ],
   aai:[  /* AAI——志の約束とともに。25歳は「留学から帰ってきたばかり」の年ごろ */
     {ja:"約束を胸に、祖国へもどってきたところだ。思うように進まない日々に、志が重く感じられることもある。——それでも、あなたが開けた扉は、まだ閉じていない。",
      en:"You've just come home, carrying the promise. Some days it feels heavy, when nothing moves the way you hoped. — And yet, the door you opened has not closed."},
-    {ja:"留学から祖国へもどり、はたらきはじめた。理想と現実のあいだで悩む日も多いけれど、あなたの姿を見て進路を決めた後輩が、もう何人かいる。",
-     en:"Back from studying abroad, you've started to work. Many days are a struggle between ideals and reality — but a few younger students have already chosen their path after watching yours."},
+    {ja:"大学を出て祖国へもどり、はたらきはじめた。理想と現実のあいだで足踏みする日も多い。それでも、あなたの姿を見て進路を決めた後輩が、もう何人かいる。",
+     en:"Out of university and home again, you've started to work. Many days you stall between ideals and reality. Even so, a few younger students have already chosen their path after watching yours."},
     {ja:"祖国にもどり、しごとと支援の輪をつくりはじめた。村の学校では「あの人みたいになりたい」という子が育っている。約束は、これから暮らしになっていく。",
      en:"Home again, you've begun to build work and circles of support. In the village school, children are growing up saying they want to be like you. The promise is becoming a life."},
   ],
   west:[  /* 欧米・日本育ち */
     {ja:"扉はいつも目の前にあった。カギも、たぶん足りていた。それでも開けなかったのは、なぜだろう。",
      en:"The doors were always right in front of you. You probably even had the keys. Why didn't you open them?"},
-    {ja:"おちついた暮らし。ふとSNSを眺めながら、選ばなかった道を考える夜もある。",
-     en:"A settled life. Some nights, scrolling your phone, you wonder about the roads you didn't take."},
-    {ja:"好きなしごとと、気の合う仲間と、ときどき旅行。選択肢の多い人生だった——それが「当たり前」だと、思っていたかもしれない。",
-     en:"Work you love, friends you click with, a trip now and then. A life full of options — you may have thought that was just \"normal\"."},
+    {ja:"そこそこ安定したしごとと、それなりの毎日。ふとSNSを眺めながら、選ばなかった道のことを考える夜がある。",
+     en:"A reasonably steady job and a reasonable life. Some nights, scrolling your phone, you think about the roads you didn't take."},
+    {ja:"好きなしごとと、気の合う仲間と、ときどき旅行。選べる道が、まだいくつも残っている——それを「当たり前」だと思ってきたかもしれない。",
+     en:"Work you love, friends you click with, a trip now and then. Many roads are still open to you — and you may have thought that was just \"normal\"."},
   ],
 };
 /* solo=true（1人プレイ）のときは、見くらべる相手がいない。

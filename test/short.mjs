@@ -2,7 +2,7 @@
    ここで守るのは、短くしたときにいちばん壊れやすい4つ:
      1. ウガンダの遺児家庭(w5/w6)が、何人で遊んでも必ず配られる
      2. 1人プレイで、ロビーからゴール・結果発表まで完走できる
-     3. AAI（留学）のトビラが、遺児家庭の盤面に必ず出てくる／カギ★3に届く
+     3. AAI が、遺児家庭の「大学のトビラ」に必ず出てくる／カギ★3に届く
      4. 25歳のゴールで、奨学金の残額が没収されず、結果に残る
    使い方: HOST=ws://localhost:8787 node test/short.mjs */
 const HOST = process.env.HOST || "ws://localhost:8787";
@@ -66,7 +66,7 @@ function autoPlay(pick) {
 }
 const rand = (pd, open) => open[Math.floor(Math.random() * open.length)];
 /* 全トビラのマスが stop:true なので、6枚全部と必ず出会う（1人プレイのネタバラシを濃くするため） */
-const SIX_DOORS = ["進学のトビラ", "くらしのトビラ", "留学のトビラ", "まちのトビラ", "技術のトビラ", "しごとのトビラ"];
+const SIX_DOORS = ["進学のトビラ", "くらしのトビラ", "大学のトビラ", "まちのトビラ", "技術のトビラ", "しごとのトビラ"];
 function checkSixDoors(p) {
   const titles = (p.doorLog || []).map(d => (d.title && d.title.ja) || "");
   for (const t of SIX_DOORS)
@@ -141,10 +141,11 @@ async function soloTest() {
    出るまで何ゲームか回す（出なければ失敗として報告する） */
 const aaiOptIndex = e => e.opts.findIndex(o => o.special === "aai");
 async function playAndCheck(games) {
-  console.log("[3] AAI（留学）のトビラが、遺児家庭の盤面に必ず出る／★3のカギに届く");
+  console.log("[3] AAI が、遺児家庭の大学のトビラに必ず出る／★3のカギに届く");
   console.log("[4] 25歳のゴールで、奨学金の残額が没収されない");
   console.log("[5] 24歳の大学院は、19歳で大学に行けた人にだけ開く（ほかの人には🔒で見える）");
   let orphans = 0, aaiOpen = 0, loanSeen = 0, univSeen = 0, gradOpen = 0;
+  const dom = {};                                      /* 国内大学（おかね120万）に、家庭カード別で手が届いたか */
   for (let n = 0; n < games; n++) {
     const rm = room();
     const cs = await joinAll(rm, 4);
@@ -171,7 +172,7 @@ async function playAndCheck(games) {
       if (orphan) {
         orphans++;
         const e = (p.doorLog || []).find(d => aaiOptIndex(d) >= 0);
-        if (!e) throw new Error(`${p.fam.id} の盤面にAAIのトビラが出なかった（留学マスを通っていない）`);
+        if (!e) throw new Error(`${p.fam.id} の盤面にAAIのトビラが出なかった（大学のマスを通っていない）`);
         if (e.age !== 19) throw new Error(`AAIのトビラが19歳ではなく${e.age}歳に出ている`);
         const i = aaiOptIndex(e), st = e.chosen === i ? "chosen" : e.states[i];
         if (st === "locked")
@@ -180,6 +181,14 @@ async function playAndCheck(games) {
           throw new Error("支援を知っている w5 にAAIが見えていない");
         if (st === "open" || st === "chosen") aaiOpen++;
       }
+      /* --- 国内大学のカギに、どの家庭が届いているか（バランス確認用の実測） --- */
+      const uni = (p.doorLog || []).find(d => d.title && d.title.ja === "大学のトビラ");
+      const di = uni.opts.findIndex(o => o.t.ja === "自分の国の大学に進む");
+      if (di < 0) throw new Error("大学のトビラに国内大学の選択肢がない");
+      if (uni.states[di] === "unseen") throw new Error("国内大学が？？？になっている（全員に見せるはず）");
+      const d = dom[p.fam.id] || (dom[p.fam.id] = { open: 0, all: 0 });
+      d.all++; if (uni.chosen === di || uni.states[di] === "open") d.open++;
+
       /* --- 5. 24歳の大学院は、大学を出た人だけが開けられる --- */
       const job = (p.doorLog || []).find(d => d.title && d.title.ja === "しごとのトビラ");
       const gi = job.opts.findIndex(o => o.req && o.req.univ);
@@ -207,6 +216,8 @@ async function playAndCheck(games) {
   if (aaiOpen === 0) throw new Error("AAIのカギに届いた人が1人もいない。req を下げること");
   if (!loanSeen) throw new Error("貸与型の奨学金を背負った人が出ず、残額の確認ができなかった");
   ok(`貸与型の奨学金 ${loanSeen}人ぶん：25歳でも没収されず、残額が結果発表に残る`);
+  const domMix = Object.keys(dom).sort().map(k => `${k} ${dom[k].open}/${dom[k].all}`).join("　");
+  console.log(`  ・国内大学（おかね120万）に手が届いた割合：${domMix}`);
   if (!univSeen) throw new Error("大学まで行けた人が出ず、大学院の確認ができなかった");
   ok(`大学に行けた ${univSeen}人ぶん：24歳の大学院が開いた（うちカギ★6も足りていた ${gradOpen}人）／行けなかった人には🔒で見えている`);
 }
