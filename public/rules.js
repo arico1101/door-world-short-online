@@ -177,8 +177,15 @@ function choiceDef(key, p){
         {t:{ja:"海外の大学に留学する",en:"Study at a university abroad"}, d:{ja:"言葉の壁をこえた先に、新しい世界",en:"Beyond the language barrier, a new world"}, tag:"global", req:{money:150, learn:4}, fx:{money:-150, learn:2, happy:3}, unlock:true, univ:true},
         /* ウガンダにも大学はある（マケレレなど）。壁は「知らないこと」ではなく学費なので、
            tag は付けず全員に見せ、おかねのカギだけで差がつくようにする。
-           unlock:true = 国内の大学でも、まなびがかせぎになる場につながる */
-        {t:{ja:"自分の国の大学に進む",en:"Go to a university in your own country"}, d:{ja:"国を出なくても、大学はある。壁になるのは学費のほう",en:"There are universities at home too. What stands in the way is the fees"}, req:{money:120, learn:3}, fx:{money:-120, learn:2, happy:2}, unlock:true, univ:true},
+           unlock:true = 国内の大学でも、まなびがかせぎになる場につながる。
+           カギ150万は現実の進学率に寄せた数字。通しプレイ360人ぶんの実測で、19歳時点で
+           これに手が届くのは ウガンダ両親あり21%・遺児(支援あり)3%・遺児(支援なし)10%
+           ＝ウガンダ3家庭で11%、欧米49%・日本53%・駐在44%。
+           120万だとウガンダ28%で高すぎた（現実のウガンダの高等教育進学率は4〜5%）。
+           ★3は「海外の大学」(★4)より必ず軽くしておくこと。軽くないとこの選択肢は
+           海外に完全に見劣りして存在意義がなくなる。それ以上ウガンダ側を下げたいなら、
+           国内を180万にしたうえで海外も上げる（＝扉ごと作りなおす）必要がある。 */
+        {t:{ja:"自分の国の大学に進む",en:"Go to a university in your own country"}, d:{ja:"国を出なくても、大学はある。壁になるのは学費のほう",en:"There are universities at home too. What stands in the way is the fees"}, req:{money:150, learn:3}, fx:{money:-150, learn:2, happy:2}, unlock:true, univ:true},
         {t:{ja:"外国で働いてみる",en:"Work in another country"}, d:{ja:"仕送りで、遠くの家族も支えられる",en:"Send money home to your family"}, req:{learn:3}, fx:{money:80, happy:1}, unlock:true},
         {t:{ja:"自分の国で暮らしつづける",en:"Stay in your own country"}, d:{ja:"ここにも、いい暮らしはある",en:"There is a good life here too"}, req:{}, fx:{happy:1}},
       ];

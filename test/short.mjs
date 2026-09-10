@@ -145,7 +145,7 @@ async function playAndCheck(games) {
   console.log("[4] 25歳のゴールで、奨学金の残額が没収されない");
   console.log("[5] 24歳の大学院は、19歳で大学に行けた人にだけ開く（ほかの人には🔒で見える）");
   let orphans = 0, aaiOpen = 0, loanSeen = 0, univSeen = 0, gradOpen = 0;
-  const dom = {};                                      /* 国内大学（おかね120万）に、家庭カード別で手が届いたか */
+  const dom = {};                                      /* 国内大学（おかね150万）に、家庭カード別で手が届いたか */
   for (let n = 0; n < games; n++) {
     const rm = room();
     const cs = await joinAll(rm, 4);
@@ -217,7 +217,7 @@ async function playAndCheck(games) {
   if (!loanSeen) throw new Error("貸与型の奨学金を背負った人が出ず、残額の確認ができなかった");
   ok(`貸与型の奨学金 ${loanSeen}人ぶん：25歳でも没収されず、残額が結果発表に残る`);
   const domMix = Object.keys(dom).sort().map(k => `${k} ${dom[k].open}/${dom[k].all}`).join("　");
-  console.log(`  ・国内大学（おかね120万）に手が届いた割合：${domMix}`);
+  console.log(`  ・国内大学（おかね150万）に手が届いた割合：${domMix}`);
   if (!univSeen) throw new Error("大学まで行けた人が出ず、大学院の確認ができなかった");
   ok(`大学に行けた ${univSeen}人ぶん：24歳の大学院が開いた（うちカギ★6も足りていた ${gradOpen}人）／行けなかった人には🔒で見えている`);
 }
