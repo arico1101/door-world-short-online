@@ -123,5 +123,6 @@
 
 - リポジトリ：`/Users/arisa/door-world-short`（github.com/arico1101/**door-world-short-online**。フォルダ名とリポジトリ名が違うので注意）
 - push は SSH 認証設定ずみ。`gh` コマンドとGitHubトークンはこの環境にないので、**リポジトリの新規作成だけは本人がブラウザでやる必要がある**
-- まだデプロイしていない。公開URLは `https://tobira-short.<サブドメイン>.workers.dev` になる予定（`npx wrangler deploy`）
+- **公開URL（デプロイずみ・そのまま検証会で使える）： https://tobira-short.tobira-online.workers.dev**
+  参加手順のスライドにはこのURLを載せる。本番オンライン版（`tobira-online.tobira-online.workers.dev`）とは別物なので取りちがえないこと
 - **このセッションではショート版の資料だけを作る。** 1画面版・オンライン版・国内版のファイルには触らない

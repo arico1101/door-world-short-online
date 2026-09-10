@@ -195,7 +195,9 @@ node test/short.mjs
 
 ## デプロイ
 
-**本番版を上書きしないよう `wrangler.toml` の `name` は `tobira-short`。** URL は `https://tobira-short.<サブドメイン>.workers.dev`。
+**公開URL： https://tobira-short.tobira-online.workers.dev** （2026-09-10 デプロイずみ）
+
+本番オンライン版（`https://tobira-online.tobira-online.workers.dev`）とは別のWorkerなので、上書きの心配はない（`wrangler.toml` の `name` が `tobira-short`）。
 
 ```bash
 npx wrangler deploy
