@@ -195,12 +195,12 @@ Cloudflare Workers + Durable Objects（無料枠）。
 | `test/ops.mjs` | 進行役むけ操作と、選択肢の秘匿のテスト |
 | `test/short.mjs` | **ショート版だけのテスト**（下記） |
 | `wrangler.toml` | Durable Object は SQLite バックエンド（無料枠の条件） |
-| `slides.html` | **検証会の進行スライド**（全32枚）。ブラウザで開いて `F` で全画面、`←`/`→` で送る |
+| `slides.html` | **検証会の進行スライド**（全33枚）。ブラウザで開いて `F` で全画面、`←`/`→` で送る |
 | `SLIDES_SCRIPT.md` | 上の読み上げ台本と進行メモ。**会のまえに必ず読むこと**（当事者への配慮の項がある） |
 | `SLIDES_BRIEF.md` | スライドを作るための指示書 |
 
-`slides.html` は**会のまえに2か所いじる必要がある**：先頭の `const GAME_URL = ""` にデプロイ後のURL、
-そしてスライド4の点線枠にQRコード画像。詳細は `SLIDES_SCRIPT.md` の「事前準備チェック」。
+`slides.html` の `GAME_URL` は公開URLを記入ずみ。**残りはスライド4の点線枠にQRコード画像を貼るだけ**
+（50〜80人がURLを手打ちするのは現実的でない）。詳細は `SLIDES_SCRIPT.md` の「事前準備チェック」。
 
 ## テスト
 
