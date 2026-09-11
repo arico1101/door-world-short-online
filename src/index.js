@@ -354,8 +354,13 @@ export class Room {
       this.setInfo("cost", sq.name, bi("生きているとお金はかかる。固定費、だいじ。", "Living costs money. Watch those fixed costs."), { money: -sq.amt });
     }
     else if (sq.t === "event") {
-      /* できごとマスが3つしかないので、しきいを本番版の8から6に下げる（16歳のマスから起こりうる） */
-      if (g.heavyOn && !p.hadHeavy && p.pos >= 6 && Math.random() < 0.3) { this.setChoice(R.heavyDef(p), "heavy"); return; }
+      /* できごとマスは3つ(#2/#6/#16)しかなく、うち必ず止まるのは10歳の#2だけ。
+         本番版のしきい(pos>=8)のままだと、ONにしても13%の人にしか起きなかった。
+         #2から起こりうるようにして、早い時期に起きたほうが「そこから支援に出会う」
+         その先の人生が残るぶん、教材としても効く。
+         skipCount=true：これはトビラではなくライフイベントなので、
+         結果発表の「出会ったトビラ」には数えない（手紙イベントと同じ扱い） */
+      if (g.heavyOn && !p.hadHeavy && p.pos >= 2 && Math.random() < 0.3) { this.setChoice(R.heavyDef(p), "heavy", true); return; }
       this.drawEvent();
     }
     else if (sq.t === "learn") this.setChoice(R.choiceDef("learnSq", p), "learn");
@@ -382,8 +387,11 @@ export class Room {
     }
     if (!ev) return this.endTurn();
     if (ev.kind === "info") {
-      const n = p.perk === "tasukeai" ? 2 : 1;
-      const revealed = R.revealTags(p, ev.reveal, n);
+      /* 数えるのはタグの数ではなく、これから出会う選択肢の数。
+         タグ数だと「1個見えるようになった」と言われて盤面が何も変わらないことがある */
+      const before = R.hiddenOptionCount(p, p.pos);
+      R.revealTags(p, ev.reveal, p.perk === "tasukeai" ? 2 : 1);
+      const revealed = before - R.hiddenOptionCount(p, p.pos);
       /* 「見えていない選択肢があった」こと自体がネタバレなので、本人だけに伝える */
       let pnote = revealed > 0
         ? bi(`👁 見えていなかった選択肢が <b>${revealed}個</b>、見えるようになった！`, `👁 <b>${revealed}</b> hidden option${revealed > 1 ? "s" : ""} became visible!`)
@@ -398,6 +406,13 @@ export class Room {
 
   applyChoice(i) {
     const g = this.g, p = this.cur(), o = g.pending.opts[i];
+    /* 開けられる扉がひとつもないときの「今回は見送る」(i=-1)。
+       いまの盤面では全トビラにカギなしの選択肢があるので起きないが、
+       受け口がないと、将来そうなった瞬間に進行が止まったまま動かなくなる */
+    if (i < 0) {
+      if (g.pending.states.includes("open")) return;   /* 開く扉があるのに見送るのは不可 */
+      return this.endTurn();
+    }
     if (!o || g.pending.states[i] !== "open") return;
     if (g.logged && p.doorLog.length) p.doorLog[p.doorLog.length - 1].chosen = i;
     const fx = { ...o.fx };
@@ -416,7 +431,9 @@ export class Room {
       const dn = R.checkDeai(p); if (dn) pnotes.push(dn);
     }
     if (o.special === "reveal2") {
-      const n = R.revealTags(p, "any", p.perk === "tasukeai" ? 4 : 2);
+      const before = R.hiddenOptionCount(p, p.pos);
+      R.revealTags(p, "any", p.perk === "tasukeai" ? 4 : 2);
+      const n = before - R.hiddenOptionCount(p, p.pos);   /* タグ数ではなく選択肢の数 */
       if (n > 0) pnotes.push(bi(`👁 見えていなかった選択肢が <b>${n}個</b>、見えるようになった！`, `👁 <b>${n}</b> hidden option${n > 1 ? "s" : ""} became visible!`));
       const dn = R.checkDeai(p); if (dn) pnotes.push(dn);
     }

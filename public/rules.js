@@ -142,12 +142,21 @@ function choiceDef(key, p){
         opts:[
           {t:{ja:"首都カンパラに出る",en:"Move to Kampala, the capital"}, d:{ja:"生活費は上がる。でも、見える世界と、はたらける場が変わる",en:"Living costs rise — but what you can see, and where you can work, change"}, req:{money:60}, fx:{money:-60, learn:1, happy:1}, special:"revealAll", unlock:true},
           {t:{ja:"村で暮らしつづける",en:"Stay in the village"}, d:{ja:"顔見知りと、慣れた畑。生活費は安い",en:"Familiar faces, familiar fields. Cheap to live"}, req:{}, fx:{money:20, happy:1}},
+          /* ショート版で足した「支え合い」の選択肢。本番版では26歳以降のトビラ（挑戦・大きな夢）に
+             chiiki タグがあったが、そのトビラが盤面から落ちたため、このタグを持つ選択肢が
+             1つもなくなっていた。→ めぐまれた家庭（chiiki を隠している w1/w2/w4）が
+             「？？？」に一度も出会わず、ふりかえりの「支え合いのトビラは、めぐまれた家庭からこそ
+             見えなかったはず」が必ず外れる状態だった。ここで復活させている。 */
+          {t:{ja:"村の助け合いの輪に入る",en:"Join the village's circle of mutual help"}, d:{ja:"毎月すこしずつ出しあって、困った人を順番に助ける",en:"Everyone puts in a little each month, and helps whoever needs it next"}, tag:"chiiki", req:{money:20}, fx:{money:-20, learn:1, happy:2}},
         ]};
       return {
         title:{ja:"まちのトビラ",en:"The Town Door"}, variant:{ja:"欧米・日本育ち",en:"raised in the West / Japan"}, body:{ja:"進学・しごと・暮らし。どこで生きていく？",en:"Study, work, life — where will you live?"},
         opts:[
           {t:{ja:"大都市に住みつづける",en:"Stay in the big city"}, d:{ja:"情報も出会いも多い。そのぶん生活費が高い",en:"Full of information and encounters — and high costs"}, req:{}, fx:{money:-30, happy:1}},
           {t:{ja:"家賃の安い郊外へ",en:"Move somewhere cheaper"}, d:{ja:"浮いたお金は貯金にまわす",en:"Save the difference"}, req:{}, fx:{money:30}},
+          /* めぐまれた家庭は chiiki を隠しているので、ここが「？？？」になる。
+             お金では買えないものが見えていない——というのがこの一枚の役目 */
+          {t:{ja:"ご近所の助け合いの輪に入る",en:"Join the neighbourhood's circle of mutual help"}, d:{ja:"すこしずつ出しあう当番制。となりに住む人の名前を、はじめて知った",en:"A rota everyone chips into. For the first time, you learn your neighbour's name"}, tag:"chiiki", req:{money:20}, fx:{money:-20, learn:1, happy:2}},
         ]};
     case "ginou": return {
       title:{ja:"技術のトビラ",en:"The Skills Door"}, body:{ja:"手に職があれば、しごとの幅がぐんと広がる。",en:"A trade widens the work you can do."},
@@ -203,7 +212,9 @@ function choiceDef(key, p){
           ...base,
         ]};
       return {
-        title:{ja:"大学のトビラ",en:"The University Door"},
+        /* variant を付けておかないと、トビラ一覧で遺児家庭版と同じ名前が2つ並び、
+           片方に「🚶 だれも通らなかった」と出て混乱する（1人プレイでは必ず起きる） */
+        title:{ja:"大学のトビラ",en:"The University Door"}, variant:{ja:"遺児家庭いがい",en:"other families"},
         body:{ja:"中等教育を終えた19歳。大学へ進む道がある——国の中にも、海の向こうにも。",en:"You're 19, just out of secondary school. Roads lead on to university — at home, and across the sea."},
         opts:base};
     }
@@ -269,7 +280,9 @@ const EVENTS = [
   {kind:"info", reveal:"any", t:{ja:"外国から来た人と、じっくり話しこんだ",en:"A long talk with a visitor from abroad"}, d:{ja:"知らなかった世界の入口が、少し見えた",en:"A door to a world you didn't know cracked open"}},
   {kind:"info", reveal:"shien", t:{ja:"「返さなくていい奨学金で大学に行けた」という話を聞いた",en:"You heard of a scholarship you never repay"}, d:{ja:"世界には、そういう仕組みをつくっている人たちがいる",en:"Somewhere, people are building systems like that"}},
   {kind:"info", reveal:"chiiki", t:{ja:"近所の家の夕食に招かれた",en:"Invited to dinner next door"}, d:{ja:"「困ったときはお互いさま」。そういう世界が、すぐそばにあった",en:"\"We help each other here.\" That world was right beside you"}},
-  {only:"rural", kind:"info", reveal:"global", t:{ja:"遺児のための留学奨学金『AAI』があると聞いた",en:"You heard about \"AAI\", a study-abroad scholarship for orphans"}, d:{ja:"学費も渡航費も出るらしい。ただし問われるのは、お金ではなく『志』だという",en:"It covers fees and travel — but what it asks for, they say, is not money. It's a sense of mission"}},
+  /* AAIの選択肢のタグは shien。ここを global にしていると「AAIがあると聞いた」のに
+     AAIは？？？のまま、という食いちがいが起きる（本番版から引き継いだ取りちがえ） */
+  {only:"rural", kind:"info", reveal:"shien", t:{ja:"遺児のための留学奨学金『AAI』があると聞いた",en:"You heard about \"AAI\", a study-abroad scholarship for orphans"}, d:{ja:"学費も渡航費も出るらしい。ただし問われるのは、お金ではなく『志』だという",en:"It covers fees and travel — but what it asks for, they say, is not money. It's a sense of mission"}},
   {kind:"fair", t:{ja:"NGOの進学説明会が、となりの町まで来た",en:"An NGO study fair came to the next town"}, d:{ja:"バス代はかかるけど、行けば情報が手に入る",en:"Bus fare costs — but information awaits"}},
 ];
 
@@ -292,6 +305,20 @@ function jobTitle(p){
   if(n <= 5) return {ic:"💻", t:{ja:"専門職・エンジニア",en:"Specialist & engineer"}};
   if(n <= 6) return {ic:"🏢", t:{ja:"国際企業のスタッフ",en:"Global company staff"}};
   return {ic:"👑", t:{ja:"マネージャー・専門家",en:"Manager & expert"}};
+}
+
+/* 「まだ見えていない選択肢」の数。p.hidden はタグの配列なので、その長さを数えると
+   実際に？？？になる選択肢の数とズレる（例：遺児・支援なしはタグ3個だが選択肢は5個）。
+   盤面に残っているトビラを実際に開いて、これから出会う？？？を数える。
+   fromPos を渡すと、そのマスより先のトビラだけを数える（もう通りすぎた扉は数えない）。 */
+function hiddenOptionCount(p, fromPos){
+  let n = 0;
+  SQUARES.forEach((sq, i) => {
+    if(sq.t !== "choice" || i <= (fromPos || 0)) return;
+    const def = choiceDef(sq.key, p);
+    n += def.opts.filter(o => o.tag && p.hidden.includes(o.tag)).length;
+  });
+  return n;
 }
 
 function revealTags(p, target, n){
@@ -410,7 +437,7 @@ export function unhideTag(p, tag){ const i = p.hidden.indexOf(tag); if(i >= 0) p
 
 export {
   PCOLORS, TYPE_META, FAMILIES, AGES, CHAPTERS, SQUARES, EVENTS, ENDINGS,
-  choiceDef, shuffle, jobTitle, revealTags, checkDeai, applyFx,
+  choiceDef, shuffle, jobTitle, revealTags, hiddenOptionCount, checkDeai, applyFx,
   effectiveMoneyReq, effectiveMoneyFx, effectiveLearnReq, meetsReq, endingText,
 };
 

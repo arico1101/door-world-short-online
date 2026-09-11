@@ -133,8 +133,13 @@ function renderBoard() {
     lab.className = "chapter";
     lab.style.gridRow = r * (rpc + 1) + 1;
     lab.style.gridColumn = "1 / -1";
+    /* 進行方向は「行」ごとに入れかわる。PCは1章=1行なので章の向き＝行の向きだが、
+       スマホは1章=2行（みぎへ→ひだりへ）なので、章ごとに1方向だけ出すと半分は逆になる */
+    const dir = cols === 6
+      ? (r % 2 === 0 ? (ja() ? "みぎへ ▶" : "RIGHT ▶") : (ja() ? "◀ ひだりへ" : "◀ LEFT"))
+      : (ja() ? "みぎへ ▶ つぎの行は ◀" : "RIGHT ▶ then ◀ LEFT");
     lab.innerHTML = L(c.t) + (c.note ? `<span class="ch-note">${L(c.note)}</span>` : "")
-      + `<span class="ch-dir">${r % 2 === 0 ? (ja() ? "みぎへ ▶" : "RIGHT ▶") : (ja() ? "◀ ひだりへ" : "◀ LEFT")}</span>`;
+      + `<span class="ch-dir">${dir}</span>`;
     b.appendChild(lab);
   });
   R.SQUARES.forEach((sq, i) => {
@@ -451,8 +456,11 @@ function renderPending() {
 /* ---------- 家庭カード（自分のぶんだけ） ---------- */
 function showCard(review) {
   if (!YOU) return;
-  const p = YOU, hiddenN = p.hidden.length;
-  const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "" };
+  const p = YOU;
+  const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0 };
+  /* タグの数ではなく、これから出会う「？？？」の実数を出す。
+     タグ数だと結果発表の 👁 の数と食いちがう（例：タグ3個でも選択肢は5個） */
+  const hiddenN = R.hiddenOptionCount(p, me.pos || 0);
   lastKey = "card";
   openModal(`
     <span class="m-tag" style="background:${R.TYPE_META.fam.tag}">🏠 ${L(R.TYPE_META.fam.label)}</span>
@@ -624,7 +632,7 @@ function showResult() {
     ・ウガンダ育ちは、★を増やすだけではかせぎが伸びなかった。「まなび」が実るために必要だった<b>もうひとつのカギ</b>は何だった？<br>
     ・あなたの家庭カードから見えなかったのは、どんなトビラだった？　逆に、見えていた強みは？<br>
     ・親を亡くしたウガンダの子には、何が「見えて」いた？　それはなぜだろう？<br>
-    ・AAIの扉は「ずるい」？——その扉を開けた人の「大きな夢」は、どうなっていた？<br>
+    ・AAIの扉は「ずるい」？——その扉には「志」の約束がついていた。25歳のいま、その人はどこで何をしていた？<br>
     ・今日あなたが学校に持ってきたもの——スマホ、無料の教科書、給食。それは、どの家庭カードの世界のものだった？<br>
     ・日本にいる私たちが、世界の遺児にわたせる「カギ」って、何だろう？` : `
     <b>■ Reflection time</b><br>
@@ -643,7 +651,7 @@ function showResult() {
     · For those raised in Uganda, more ★ alone didn't raise pay. What was <b>the other key</b> that made learning bear fruit?<br>
     · Which doors were invisible from your Family Card? And what strengths could you see?<br>
     · What could the orphan in Uganda "see"? Why?<br>
-    · Was the AAI door "unfair"? — And what happened to that player's "big dream"?<br>
+    · Was the AAI door "unfair"? — It came with a promise of purpose. At 25, where was that player, and what were they doing?<br>
     · The things you brought to school today — a phone, free textbooks, school lunch. Which family card's world do they belong to?<br>
     · What "keys" could we hand to orphans around the world?`;
 }
