@@ -10,6 +10,12 @@ const fage = n => lang === "ja" ? `${n}歳` : `Age ${n}`;
 const ja = () => lang === "ja";
 const $ = id => document.getElementById(id);
 
+/* 描いたアイコン（index.html の <symbol> を参照する。絵文字は使わない） */
+const ic = (name, cls) => `<svg class="ic${cls ? " " + cls : ""}" aria-hidden="true"><use href="#ic-${name}"/></svg>`;
+/* プレイヤーの色から、わりあてられたキャラを引く */
+const charOf = p => R.CHARS[Math.max(0, R.PCOLORS.indexOf(p.color))] || R.CHARS[0];
+const faceBg = p => `background-image:url(./chars/${charOf(p)}-face.png)`;
+
 /* ---------- 通信 ---------- */
 let ws = null, G = null, YOU = null, MYPID = null, ROOM = null, retry = 0;
 let shown = {};            /* コマの表示位置（1マスずつ動かすため） */
@@ -74,11 +80,33 @@ $("joinBtn").onclick = () => {
 };
 $("startBtn").onclick = () => send({ t: "start", heavyOn: $("heavyToggle").checked });
 $("againBtn").onclick = () => send({ t: "again" });
-$("diceBtn").onclick = () => send({ t: "roll" });
 $("cardBtn").onclick = () => { if (!isOpen() && YOU) showCard(true); };
 $("helpBtnGame").onclick = () => { if (!isOpen()) renderRules(0); };
 $("hostBtn").onclick = () => { if (hostOpen()) closeHost(); else renderHostPanel(); };
 $("claimBtn").onclick = () => send({ t: "claimHost" });
+
+/* ---------- サイコロ ---------- */
+const PIPS = {1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
+let spinTimer = null;
+function diceFace(n) {
+  const on = new Set(PIPS[n] || []);
+  $("diceFace").innerHTML = Array.from({ length: 9 }, (_, i) => on.has(i) ? "<span><i></i></span>" : "<span></span>").join("");
+}
+function spinDice() {
+  if (spinTimer) return;
+  $("diceFace").classList.add("spin");
+  spinTimer = setInterval(() => diceFace(1 + Math.floor(Math.random() * 6)), 70);
+  setTimeout(() => {
+    clearInterval(spinTimer); spinTimer = null;
+    $("diceFace").classList.remove("spin");
+    diceFace((G && G.dice) || 1);
+  }, 700);
+}
+$("diceBtn").onclick = () => {
+  const cur = G && G.players[G.turn];
+  if (cur && cur.pos >= 4) spinDice();
+  send({ t: "roll" });
+};
 
 /* ---------- 言語 ---------- */
 function applyLang() {
@@ -86,7 +114,7 @@ function applyLang() {
   document.title = ja() ? "トビラ せかい版 オンライン ショート" : "TOBIRA World Online · Short";
   $("langJa").classList.toggle("on", ja());
   $("langEn").classList.toggle("on", !ja());
-  $("gameSub").textContent = ja() ? "🌍 せかい版 オンライン ショート ─ みんなの端末で遊ぶ（1〜4人・25分）" : "🌍 World Edition Online · Short — play on your own devices (1–4, 25 min)";
+  $("gameSub").textContent = ja() ? "せかい版 オンライン ショート ─ みんなの端末で遊ぶ（1〜4人・25分）" : "World Edition Online · Short — play on your own devices (1–4, 25 min)";
   $("nameInput").placeholder = ja() ? "なまえ" : "Your name";
   $("createBtn").textContent = ja() ? "ルームをつくる" : "Create a room";
   $("joinNote").textContent = ja() ? "または、進行役から聞いたコードで参加：" : "Or join with the code from your host:";
@@ -98,81 +126,288 @@ function applyLang() {
   $("codeLabel").textContent = ja() ? "あいことば" : "Room code";
   $("shareNote").textContent = ja() ? "このコードを、いっしょに遊ぶ人に伝えてください。" : "Share this code with the other players.";
   $("heavyLabel").innerHTML = ja()
-    ? "⚠️ 死別・干ばつなどのライフイベントを含める<br><small>ファシリテーター向け設定。参加者の状況にあわせてONにしてください。</small>"
-    : "⚠️ Include loss & disaster life events<br><small>For facilitators. Turn on when it suits your group.</small>";
+    ? "死別・干ばつなどのライフイベントを含める<br><small>ファシリテーター向け設定。参加者の状況にあわせてONにしてください。</small>"
+    : "Include loss & disaster life events<br><small>For facilitators. Turn on when it suits your group.</small>";
   $("startBtn").textContent = ja() ? "ゲーム開始" : "Start game";
   $("cardBtnLabel").textContent = ja() ? "カード" : "Card";
   $("cardBtn").setAttribute("aria-label", ja() ? "自分の家庭カードを見る" : "See my family card");
-  $("logoTxt").textContent = ja() ? "🌍 トビラ" : "🌍 TOBIRA";
-  $("resTitle").textContent = ja() ? "🎉 けっか はっぴょう" : "🎉 Results";
+  $("logoTxt").textContent = ja() ? "トビラ" : "TOBIRA";
+  $("resTitle").textContent = ja() ? "けっか はっぴょう" : "Results";
   $("resSub").textContent = ja()
     ? "6歳から25歳、19年間のけっか。順位は「ハッピー」の数で決まります — そして、家庭カードの公開"
     : "19 years, from age 6 to 25. Ranking is decided by ♥ Happiness — and the Family Cards are revealed";
-  $("allDoorsBtn").textContent = ja() ? "🚪 19年間のトビラ一覧を見る" : "🚪 See all doors of the 19 years";
+  $("allDoorsBtn").textContent = ja() ? "19年間のトビラ一覧を見る" : "See all doors of the 19 years";
   $("againBtn").textContent = ja() ? "もういちど遊ぶ" : "Play again";
-  if (G) render();
+  if (G) { renderBoard(); render(); }
 }
 $("langJa").onclick = () => { lang = "ja"; localStorage.setItem("tobira-lang", lang); applyLang(); };
 $("langEn").onclick = () => { lang = "en"; localStorage.setItem("tobira-lang", lang); applyLang(); };
 
-/* ---------- 盤面 ---------- */
-const mqMobile = window.matchMedia("(max-width:640px)");
-const boardCols = () => mqMobile.matches ? 3 : 6;
-function gridPos(i) {
-  const cols = boardCols();
-  const row = Math.floor(i / cols);
-  return { row, col: (row % 2 === 0) ? (i % cols) : (cols - 1 - (i % cols)) };
+/* ================= 盤面 =================
+   マスをマス目に並べるのではなく、1本の道を24等分してタイルに切る。
+   タイルが曲がることで「つぎにどっちへ進むか」が形そのものでわかる。 */
+const NS = "http://www.w3.org/2000/svg";
+const el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+const mqMobile = window.matchMedia("(max-width:700px)");
+
+const LAY_WIDE = {
+  vb: [1160, 800], corner: 72,
+  pts: [[124,272],[1036,272],[1036,422],[124,422],[124,572],[1036,572],[1036,712],[124,712]],
+  chapY: [190, 347, 497, 645], sub: true, tokenW: 48, tokenH: 62, fsBig: 19, fsSmall: 15,
+};
+const LAY_TALL = {
+  vb: [560, 1660], corner: 70,
+  pts: [[92,150],[468,150],[468,340],[92,340],[92,530],[468,530],[468,720],[92,720],
+        [92,910],[468,910],[468,1100],[92,1100],[92,1290],[468,1290],[468,1480],[92,1480]],
+  chapY: [62, 435, 815, 1195], sub: false, tokenW: 46, tokenH: 58, fsBig: 21, fsSmall: 18,
+};
+const HALFW = { choice: 66, start: 62, goal: 62 };
+const halfW = t => HALFW[t] || 52;
+
+let geo = null;   /* {lay, at(s), seg} — コマの位置計算でも使う */
+
+/* 折れ線を、角だけ丸めた細かい点列に変える */
+function densePath(lay) {
+  const P = lay.pts, Rr = lay.corner, out = [];
+  const unit = (a, b) => { const d = [b[0]-a[0], b[1]-a[1]]; const n = Math.hypot(d[0], d[1]); return [d[0]/n, d[1]/n, n]; };
+  let cur = P[0].slice();
+  for (let i = 1; i < P.length; i++) {
+    const v = P[i], [ux, uy, len] = unit(cur, v), hasCorner = i < P.length - 1;
+    const stop = hasCorner ? Math.max(0, len - Rr) : len;
+    const n = Math.max(2, Math.round(stop / 6));
+    for (let k = 0; k <= n; k++) out.push([cur[0] + ux*stop*k/n, cur[1] + uy*stop*k/n]);
+    if (hasCorner) {
+      const [wx, wy] = unit(v, P[i+1]);
+      const s = [cur[0] + ux*stop, cur[1] + uy*stop], e = [v[0] + wx*Rr, v[1] + wy*Rr], m = 40;
+      for (let k = 1; k <= m; k++) {
+        const t = k/m, it = 1-t;
+        out.push([it*it*s[0] + 2*it*t*v[0] + t*t*e[0], it*it*s[1] + 2*it*t*v[1] + t*t*e[1]]);
+      }
+      cur = e;
+    }
+  }
+  return out;
 }
+function buildGeo(lay) {
+  const D = densePath(lay), cum = [0];
+  for (let i = 1; i < D.length; i++) cum.push(cum[i-1] + Math.hypot(D[i][0]-D[i-1][0], D[i][1]-D[i-1][1]));
+  const total = cum[cum.length - 1];
+  const at = s => {
+    let lo = 0, hi = cum.length - 1;
+    while (lo < hi - 1) { const m = (lo + hi) >> 1; if (cum[m] < s) lo = m; else hi = m; }
+    const t = (s - cum[lo]) / Math.max(1e-6, cum[hi] - cum[lo]);
+    const p = [D[lo][0] + (D[hi][0]-D[lo][0])*t, D[lo][1] + (D[hi][1]-D[lo][1])*t];
+    const a = D[Math.max(0, lo-2)], b = D[Math.min(D.length-1, hi+2)];
+    const dx = b[0]-a[0], dy = b[1]-a[1], n = Math.hypot(dx, dy) || 1;
+    return { p, n: [-dy/n, dx/n] };
+  };
+  return { lay, at, seg: total / R.SQUARES.length };
+}
+
+/* 背景：日本・欧米・ウガンダが地つづきに並ぶ、一枚の風景 */
+function drawScenery(svg, lay) {
+  const [W, H] = lay.vb, sky = H * (lay.sub ? 0.265 : 0.115);
+  const defs = el("defs");
+  const grad = el("linearGradient", { id: "sky", x1: 0, y1: 0, x2: 0, y2: 1 });
+  [["0%", "#DDEFF9"], ["46%", "#EDF7F1"], ["100%", "#E6F3DC"]].forEach(([o, c]) =>
+    grad.appendChild(el("stop", { offset: o, "stop-color": c })));
+  defs.appendChild(grad); svg.appendChild(defs);
+  svg.appendChild(el("rect", { width: W, height: H, fill: "url(#sky)" }));
+
+  const g = el("g", {}), add = (t, a) => g.appendChild(el(t, a));
+  const k = W / 1160;                              /* 横幅にあわせて風景を縮める */
+  const x = v => v * k, y = v => v * (sky / 212);  /* 風景は空の帯の中に収める */
+  add("rect", { x: 0, y: 0, width: W, height: sky, fill: "#DCEEF9" });
+  add("circle", { cx: x(1088), cy: y(52), r: Math.max(14, x(28)), fill: "#FFE49A" });
+  [[150,54],[430,40],[700,60],[930,44]].forEach(([cx, cy]) => {
+    add("ellipse", { cx: x(cx), cy: y(cy), rx: x(34), ry: y(14), fill: "#fff", opacity: .9 });
+    add("ellipse", { cx: x(cx-24), cy: y(cy+7), rx: x(21), ry: y(11), fill: "#fff", opacity: .9 });
+  });
+  /* 日本：富士山・鳥居・桜 */
+  add("path", { d: `M${x(10)} ${y(196)} L${x(96)} ${y(84)} L${x(182)} ${y(196)} Z`, fill: "#BBD6E8" });
+  add("path", { d: `M${x(66)} ${y(120)} L${x(96)} ${y(84)} L${x(126)} ${y(120)} q${-x(30)} ${y(14)} ${-x(60)} 0 z`, fill: "#fff" });
+  add("path", { d: `M${x(196)} ${y(196)} v${-y(56)} M${x(262)} ${y(196)} v${-y(56)}`, stroke: "#D95F45", "stroke-width": x(10), "stroke-linecap": "round" });
+  add("path", { d: `M${x(182)} ${y(140)} h${x(94)} M${x(190)} ${y(156)} h${x(78)}`, stroke: "#D95F45", "stroke-width": x(10), "stroke-linecap": "round" });
+  add("circle", { cx: x(318), cy: y(158), r: x(30), fill: "#F8CBDA" });
+  add("circle", { cx: x(348), cy: y(176), r: x(21), fill: "#FBDCE6" });
+  add("circle", { cx: x(296), cy: y(180), r: x(17), fill: "#FBDCE6" });
+  /* 欧米：街なみ */
+  [[470,126],[512,150],[556,104],[600,140],[644,120],[688,152]].forEach(([bx, by], i) => {
+    add("rect", { x: x(bx), y: y(by), width: x(34), height: y(196-by), rx: 4, fill: i % 2 ? "#CBDAE9" : "#D9E5F0" });
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++)
+      add("rect", { x: x(bx+7+c*14), y: y(by+12+r*20), width: x(8), height: y(10), rx: 2, fill: "#EEF5FA" });
+  });
+  /* ウガンダ：サバンナの丘・アカシア・丸い家 */
+  add("path", { d: `M${x(820)} ${y(196)} q${x(120)} ${-y(54)} ${x(250)} ${-y(14)} q${x(50)} ${y(16)} ${x(80)} ${y(14)} z`, fill: "#DCEEC6" });
+  add("path", { d: `M${x(948)} ${y(196)} v${-y(48)}`, stroke: "#A98363", "stroke-width": x(9), "stroke-linecap": "round" });
+  add("path", { d: `M${x(886)} ${y(148)} q${x(62)} ${-y(34)} ${x(124)} 0 q${-x(62)} ${y(14)} ${-x(124)} 0 z`, fill: "#8CC28A" });
+  add("path", { d: `M${x(1042)} ${y(196)} a${x(30)} ${y(19)} 0 0 1 ${x(60)} 0 z`, fill: "#EBCDA1" });
+  add("path", { d: `M${x(1034)} ${y(176)} l${x(38)} ${-y(26)} l${x(38)} ${y(26)} z`, fill: "#C99B6A" });
+  /* 道ぞいの木 */
+  const tree = (tx, ty, s) => {
+    add("path", { d: `M${tx} ${ty} v${16*s}`, stroke: "#A98363", "stroke-width": 4.5*s, "stroke-linecap": "round" });
+    add("circle", { cx: tx, cy: ty - 5*s, r: 13*s, fill: "#93C58F" });
+    add("circle", { cx: tx - 9*s, cy: ty + 2*s, r: 10*s, fill: "#7FB87F" });
+    add("circle", { cx: tx + 9*s, cy: ty + 1*s, r: 9*s, fill: "#7FB87F" });
+  };
+  const inset = lay.sub ? 46 : 30;
+  for (let i = 0; i < (lay.sub ? 3 : 6); i++) {
+    const ty = sky + 40 + (H - sky - 70) * (i + .5) / (lay.sub ? 3 : 6);
+    tree(inset, ty, lay.sub ? 1 : .8);
+    tree(W - inset, ty + 30, lay.sub ? .9 : .75);
+  }
+  svg.appendChild(g);
+}
+
+/* マスのアイコン（盤面用・線で描く） */
+function tileIcon(type, cx, cy, c) {
+  const g = el("g", { transform: `translate(${cx} ${cy})` });
+  const a = (t, at) => g.appendChild(el(t, at));
+  const S = { fill: "none", stroke: c, "stroke-width": 3, "stroke-linecap": "round", "stroke-linejoin": "round" };
+  if (type === "income") {
+    a("ellipse", { cx: 0, cy: 6, rx: 13, ry: 5, fill: "#F6C445", stroke: c, "stroke-width": 2.6 });
+    a("ellipse", { cx: 0, cy: 0, rx: 13, ry: 5, fill: "#FFD86B", stroke: c, "stroke-width": 2.6 });
+    a("ellipse", { cx: 0, cy: -6, rx: 13, ry: 5, fill: "#FFE49A", stroke: c, "stroke-width": 2.6 });
+  } else if (type === "cost") {
+    a("circle", { cx: -4, cy: -2, r: 11, fill: "#fff", stroke: c, "stroke-width": 2.8 });
+    a("path", { ...S, d: "M-8 -6 L-4 -2 L0 -6 M-8 -1 h8 M-4 -2 v6", "stroke-width": 2.6 });
+    a("path", { ...S, d: "M10 2 v10 M10 14 l-5 -5 M10 14 l5 -5", "stroke-width": 3.2 });
+  } else if (type === "event" || type === "heavy") {
+    a("path", { d: "M4 -14 L-9 3 h7 l-4 13 L11 -2 h-7 z", fill: type === "heavy" ? "#C9A98C" : "#B59BE8", stroke: c, "stroke-width": 2.6, "stroke-linejoin": "round" });
+  } else if (type === "learn") {
+    a("path", { d: "M-13 -8 h11 a2 2 0 0 1 2 2 v15 a2 2 0 0 0 -2 -2 h-11 z", fill: "#fff", stroke: c, "stroke-width": 2.8, "stroke-linejoin": "round" });
+    a("path", { d: "M13 -8 h-11 a2 2 0 0 0 -2 2 v15 a2 2 0 0 1 2 -2 h11 z", fill: "#DCEEF9", stroke: c, "stroke-width": 2.8, "stroke-linejoin": "round" });
+  } else if (type === "choice") {
+    a("path", { d: "M-12 15 v-22 a12 12 0 0 1 24 0 v22 z", fill: "#fff", stroke: "#D4547A", "stroke-width": 3, "stroke-linejoin": "round" });
+    a("circle", { cx: 6, cy: 5, r: 2.6, fill: "#D4547A" });
+  } else if (type === "start") {
+    a("path", { ...S, d: "M-12 0 h20 M2 -7 l8 7 l-8 7", stroke: "#fff", "stroke-width": 4 });
+  } else if (type === "goal") {
+    a("path", { ...S, d: "M-9 14 v-24", stroke: "#7A6320", "stroke-width": 3.4 });
+    a("path", { d: "M-9 -10 h20 v12 h-20 z", fill: "#fff", stroke: "#7A6320", "stroke-width": 2.6 });
+    a("path", { d: "M-9 -10 h10 v6 h-10 z M1 -4 h10 v6 h-10 z", fill: "#7A6320" });
+  }
+  return g;
+}
+
 function renderBoard() {
-  const b = $("board");
-  b.innerHTML = "";
-  const cols = boardCols(), rpc = 6 / cols;
-  b.style.gridTemplateColumns = `repeat(${cols},1fr)`;
-  R.CHAPTERS.forEach((c, r) => {
-    const lab = document.createElement("div");
-    lab.className = "chapter";
-    lab.style.gridRow = r * (rpc + 1) + 1;
-    lab.style.gridColumn = "1 / -1";
-    /* 進行方向は「行」ごとに入れかわる。PCは1章=1行なので章の向き＝行の向きだが、
-       スマホは1章=2行（みぎへ→ひだりへ）なので、章ごとに1方向だけ出すと半分は逆になる */
-    const dir = cols === 6
-      ? (r % 2 === 0 ? (ja() ? "みぎへ ▶" : "RIGHT ▶") : (ja() ? "◀ ひだりへ" : "◀ LEFT"))
-      : (ja() ? "みぎへ ▶ つぎの行は ◀" : "RIGHT ▶ then ◀ LEFT");
-    lab.innerHTML = L(c.t) + (c.note ? `<span class="ch-note">${L(c.note)}</span>` : "")
-      + `<span class="ch-dir">${dir}</span>`;
-    b.appendChild(lab);
-  });
+  const lay = mqMobile.matches ? LAY_TALL : LAY_WIDE;
+  geo = buildGeo(lay);
+  const svg = $("board");
+  svg.setAttribute("viewBox", `0 0 ${lay.vb[0]} ${lay.vb[1]}`);
+  svg.innerHTML = "";
+  drawScenery(svg, lay);
+
+  const gTiles = el("g", {}), gLabels = el("g", {});
+  svg.appendChild(gTiles); svg.appendChild(gLabels);
+  const { at, seg } = geo;
+
   R.SQUARES.forEach((sq, i) => {
-    const m = R.TYPE_META[sq.t];
-    const el = document.createElement("div");
-    el.className = `sq t-${sq.t}`;
-    el.id = `sq-${i}`;
-    const { row, col } = gridPos(i);
-    const chap = Math.floor(i / 6);
-    el.style.gridRow = chap * (rpc + 1) + (row - chap * rpc) + 2;
-    el.style.gridColumn = col + 1;
-    const age = (sq.t === "choice" || sq.t === "start" || sq.t === "goal") ? `<span class="num">${ja() ? R.AGES[i] + "歳" : R.AGES[i]}</span>` : "";
-    el.innerHTML = `${age}<span class="ic">${m.ic}</span><span>${L(sq.name) || L(m.label)}</span><div class="tokens"></div>`;
-    b.appendChild(el);
+    const m = R.TYPE_META[sq.t], hw = halfW(sq.t);
+    const s0 = i * seg + 3.5, s1 = (i + 1) * seg - 3.5, M = 22, left = [], right = [];
+    for (let k = 0; k <= M; k++) {
+      const { p, n } = at(s0 + (s1 - s0) * k / M);
+      left.push([p[0] + n[0]*hw, p[1] + n[1]*hw]);
+      right.push([p[0] - n[0]*hw, p[1] - n[1]*hw]);
+    }
+    const d = "M" + left.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ")
+      + " L " + right.reverse().map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ") + " Z";
+    gTiles.appendChild(el("path", { d, id: `sq-${i}`, fill: m.fill, stroke: "#FFFFFF", "stroke-width": 9, "stroke-linejoin": "round" }));
+
+    /* タイルは曲がるぶん横はばが一定でない。文字がはみ出さないよう、実幅に合わせて字を詰める */
+    const xs = left.concat(right).map(q => q[0]);
+    const inner = Math.max(46, Math.max(...xs) - Math.min(...xs) - 26);
+    const fit = (txt, base) => {
+      const w = [...txt].reduce((s, ch) => s + (ch.charCodeAt(0) > 0x2E80 ? 1 : 0.55), 0);
+      return Math.max(9, Math.min(base, inner / Math.max(1, w)));
+    };
+    const { p: c } = at((s0 + s1) / 2);
+    const big = sq.t === "choice" || sq.t === "start" || sq.t === "goal";
+    gLabels.appendChild(tileIcon(sq.t, c[0], c[1] - (big ? 30 : 26), m.chip));
+    const tTxt = L(sq.name) || L(m.label);
+    const title = el("text", { x: c[0], y: c[1] + (big ? 12 : 10), "text-anchor": "middle",
+      "font-size": fit(tTxt, big ? lay.fsBig : lay.fsSmall), "font-weight": 900, fill: m.ink });
+    title.textContent = tTxt;
+    gLabels.appendChild(title);
+    /* 年齢はトビラ・スタート・ゴールだけ。せまい画面では説明文は出さない */
+    if (big || lay.sub) {
+      const sTxt = big
+        ? (ja() ? `${R.AGES[i]}歳` : `Age ${R.AGES[i]}`) + (L(sq.sub) ? "・" + L(sq.sub) : "")
+        : (L(sq.sub) || "");
+      if (sTxt) {
+        const sub = el("text", { x: c[0], y: c[1] + (big ? 32 : 28), "text-anchor": "middle",
+          "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5), "font-weight": 700,
+          fill: big ? m.ink : "#6E7E8C", opacity: big ? .92 : 1 });
+        sub.textContent = sTxt;
+        gLabels.appendChild(sub);
+      }
+    }
   });
+
+  /* 章のラベルは、段と段のあいだの余白に置く */
+  R.CHAPTERS.forEach((ch, r) => {
+    const t = L(ch.t), y = lay.chapY[r], cx = lay.vb[0] / 2;
+    const w = Math.min(lay.vb[0] - 24, t.length * (lay.sub ? 14 : 15) + 24);
+    gLabels.appendChild(el("rect", { x: cx - w/2, y: y - 15, width: w, height: 26, rx: 13,
+      fill: "#fff", opacity: .95, stroke: "#DCE7EE", "stroke-width": 2 }));
+    const e = el("text", { x: cx, y: y + 3, "font-size": lay.sub ? 13.5 : 14.5, "font-weight": 900,
+      fill: "#3F5266", "text-anchor": "middle" });
+    e.textContent = t;
+    gLabels.appendChild(e);
+  });
+
+  svg.appendChild(el("g", { id: "tokLayer" }));
 }
 mqMobile.addEventListener("change", () => { renderBoard(); renderTokens(); });
 
+/* コマの表情。数字の変化ではなく「いまの状態」をあらわす */
+function emotionOf(p, isTurn) {
+  if (p.left) return "angry";
+  if (p.money < 0) return "sad";
+  if (p.done) return "joy";
+  return isTurn ? "fun" : "joy";
+}
 function renderTokens() {
-  document.querySelectorAll(".sq .tokens").forEach(t => t.innerHTML = "");
-  if (!G) return;
-  G.players.forEach((p, idx) => {
+  const layer = $("tokLayer");
+  if (!layer || !G || !geo) return;
+  layer.innerHTML = "";
+  const { at, seg, lay } = geo;
+  /* 同じマスに重なったときは、少しずつ横にずらす */
+  const bucket = {};
+  G.players.forEach(p => {
     const pos = shown[p.id] != null ? shown[p.id] : p.pos;
-    const holder = document.querySelector(`#sq-${pos} .tokens`);
-    if (!holder) return;
-    const tk = document.createElement("span");
-    tk.className = "tok" + (idx === G.turn && !p.done ? " now" : "");
-    tk.id = `tok-${p.id}`;
-    tk.innerHTML = `<svg viewBox="0 0 24 26">
-      <circle cx="12" cy="7" r="5.5" fill="${p.color}" stroke="#4A3A30" stroke-width="2"/>
-      <path d="M12 13.5c-5.2 0-8.5 3.6-8.5 8.5V24h17v-2c0-4.9-3.3-8.5-8.5-8.5z" fill="${p.color}" stroke="#4A3A30" stroke-width="2" stroke-linejoin="round"/>
-    </svg>`;
-    holder.appendChild(tk);
+    (bucket[pos] = bucket[pos] || []).push(p);
+  });
+  Object.entries(bucket).forEach(([posStr, list]) => {
+    const pos = +posStr;
+    const sq = R.SQUARES[pos]; if (!sq) return;
+    const { p: c, n } = at(pos * seg + seg / 2);
+    const hw = halfW(sq.t);
+    /* どの段でも「タイルの上ふち」に立つよう、法線の向きをそろえる */
+    const sg = n[1] < 0 ? 1 : -1;
+    const base = [c[0] + n[0]*sg*(hw - 6), c[1] + n[1]*sg*(hw - 6)];
+    const W = lay.tokenW, H = lay.tokenH;
+    list.forEach((p, k) => {
+      const off = (k - (list.length - 1) / 2) * (W * 0.52);
+      const foot = [base[0] + off, base[1] - Math.abs(off) * 0.12];
+      const g = el("g", { id: `tok-${p.id}` });
+      g.appendChild(el("ellipse", { cx: foot[0], cy: foot[1] - 1, rx: 15, ry: 5, fill: "rgba(63,82,102,.18)" }));
+      const isTurn = G.players[G.turn] && G.players[G.turn].id === p.id && !p.done;
+      if (p.id === MYPID) {
+        g.appendChild(el("rect", { x: foot[0] - 31, y: foot[1] - H - 23, width: 62, height: 22, rx: 11, fill: "#F4879F" }));
+        const t = el("text", { x: foot[0], y: foot[1] - H - 8, "text-anchor": "middle",
+          "font-size": 12.5, "font-weight": 900, fill: "#fff" });
+        t.textContent = ja() ? "あなた" : "YOU";
+        g.appendChild(t);
+      }
+      const fo = el("foreignObject", { x: foot[0] - W/2, y: foot[1] - H, width: W, height: H });
+      const div = document.createElement("div");
+      div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+      div.style.cssText = `width:${W}px;height:${H}px;background:url(./chars/${charOf(p)}-${emotionOf(p, isTurn)}.png) center bottom/contain no-repeat;`
+        + `filter:drop-shadow(0 1px 2px rgba(63,82,102,.3))${isTurn ? "" : ";opacity:.82"}`;
+      fo.appendChild(div); g.appendChild(fo);
+      layer.appendChild(g);
+    });
   });
 }
 /* サーバーが決めた位置まで、1マスずつ歩かせる。
@@ -204,17 +439,14 @@ function stepAnim() {
   }, 200);
 }
 function focusSquare(pos) {
-  const el = $(`sq-${pos}`);
-  if (!el) return;
-  const r = el.getBoundingClientRect();
-  const wrap = document.querySelector(".board-wrap");
-  if (wrap) {
-    const wr = wrap.getBoundingClientRect();
-    wrap.scrollTo({ left: Math.max(0, wrap.scrollLeft + (r.left - wr.left) - (wrap.clientWidth - r.width) / 2), behavior: "auto" });
-  }
-  window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - (window.innerHeight - r.height) / 2), behavior: "smooth" });
+  const t = $(`sq-${pos}`);
+  if (!t || !t.getBoundingClientRect) return;
+  const r = t.getBoundingClientRect();
+  if (r.height === 0) return;
+  window.scrollTo({ top: Math.max(0, r.top + window.scrollY - (window.innerHeight - r.height) / 2), behavior: "smooth" });
 }
 
+/* ---------- プレイヤー一覧（画面上） ---------- */
 function renderStrip() {
   const s = $("playersStrip");
   s.innerHTML = "";
@@ -223,10 +455,16 @@ function renderStrip() {
     c.className = "pcard" + (i === G.turn ? " now" : "") + (p.done ? " done" : "")
       + (p.connected ? "" : " off") + (p.left ? " left" : "");
     c.innerHTML = `
-      <div class="nm"><span class="p-dot" style="background:${p.color}"></span>${p.name}${p.id === MYPID ? `<span class="mine-badge">${ja() ? "あなた" : "you"}</span>` : ""}${p.left ? " 🚪" : (p.done ? " 🏁" : "")}<span class="age">${fage(R.AGES[p.pos])}</span></div>
-      <div class="stat"><span>${ja() ? "おかね" : "Money"}</span><b class="${p.money < 0 ? "neg" : ""}">${fm(p.money)}</b></div>
-      <div class="stat"><span>${ja() ? "まなび" : "Learn"}</span><b>${"★".repeat(Math.min(p.learn, 8))}${p.learn > 8 ? "+" : ""}</b></div>
-      <div class="stat"><span>${ja() ? "ハッピー" : "Happy"}</span><b>♥${p.happy}</b></div>`;
+      <div class="av" style="${faceBg(p)}; border-color:${p.color}"></div>
+      <div style="min-width:0; flex:1">
+        <div class="nm">${p.name}${p.id === MYPID ? `<span class="mine-badge">${ja() ? "あなた" : "you"}</span>` : ""}
+          <span class="age">${fage(R.AGES[p.pos])}</span></div>
+        <div class="row">
+          <span class="m1">${fm(p.money)}</span>
+          <span class="m2">★${p.learn}</span>
+          <span class="m3">♥${p.happy}</span>
+        </div>
+      </div>`;
     s.appendChild(c);
   });
 }
@@ -252,30 +490,30 @@ function renderHostPanel() {
   const cur = G.phase === "play" ? G.players[G.turn] : null;
   const rows = G.players.map(p => {
     const tags = [];
-    if (p.id === G.hostId) tags.push(ja() ? "👑 進行役" : "👑 host");
-    if (cur && p.id === cur.id) tags.push(ja() ? "🎲 いまの手番" : "🎲 current turn");
-    if (p.left) tags.push(ja() ? "🚪 退出" : "🚪 left");
-    else if (p.done) tags.push("🏁");
+    if (p.id === G.hostId) tags.push(ja() ? "進行役" : "host");
+    if (cur && p.id === cur.id) tags.push(ja() ? "いまの手番" : "current turn");
+    if (p.left) tags.push(ja() ? "退出" : "left");
+    else if (p.done) tags.push(ja() ? "ゴール" : "finished");
     return `<div class="host-row${p.connected ? "" : " off"}">
       <span class="hn"><span class="p-dot" style="background:${p.color}"></span>${p.name}
-        <span class="st">${p.connected ? "🟢" : (ja() ? "⚪️ 切断中" : "⚪️ offline")}</span></span>
+        <span class="tag">${p.connected ? (ja() ? "接続中" : "online") : (ja() ? "切断中" : "offline")}</span></span>
       ${tags.map(t => `<span class="tag">${t}</span>`).join("")}
-      ${p.id === MYPID || p.left ? "" : `<button class="host-act" data-pass="${p.id}">${ja() ? "👑 ゆずる" : "👑 make host"}</button>
+      ${p.id === MYPID || p.left ? "" : `<button class="host-act" data-pass="${p.id}">${ja() ? "ゆずる" : "make host"}</button>
       <button class="host-act danger" data-kick="${p.id}">${ja() ? "外す" : "Remove"}</button>`}
     </div>`;
   }).join("");
 
   const btns = [];
   if (G.phase === "cards") btns.push(`<button class="host-act" id="hForce">${ja()
-    ? "▶ まだの人を待たずに始める" : "▶ Start without the ones still looking"}</button>`);
+    ? "まだの人を待たずに始める" : "Start without the ones still looking"}</button>`);
   if (G.phase === "play" && cur) btns.push(`<button class="host-act" id="hSkip">${ja()
-    ? `⏭ ${cur.name} さんの番をとばす` : `⏭ Skip ${cur.name}'s turn`}</button>`);
+    ? `${cur.name} さんの番をとばす` : `Skip ${cur.name}'s turn`}</button>`);
   btns.push(`<button class="host-act danger" id="hReset">${ja()
-    ? "↩ ロビーにもどす" : "↩ Back to the lobby"}</button>`);
+    ? "ロビーにもどす" : "Back to the lobby"}</button>`);
 
   openHost(`<div class="rule-page">
     <button class="rule-close" id="hClose">✕</button>
-    <span class="m-tag" style="background:var(--brown)">🛠 ${ja() ? "進行役メニュー" : "Host tools"}</span>
+    <span class="m-tag" style="background:#5B7FA8">${ic("tools", "s")} ${ja() ? "進行役メニュー" : "Host tools"}</span>
     <h2>${ja() ? "進行がとまったとき" : "When the game gets stuck"}</h2>
     <div class="host-note">${ja()
       ? "端末が落ちた・席を外した・まちがえて入った——そんなときだけ使ってください。<br>ゲームの中身は変わりません。"
@@ -317,31 +555,48 @@ function renderHostPanel() {
 }
 
 /* ---------- モーダル部品 ---------- */
-function fxChips(fx) {
-  const parts = [];
-  if (fx.money) parts.push(`<span class="fx" style="color:${fx.money > 0 ? "#5a9114" : "#d24a3c"}">${fx.money > 0 ? "+" : ""}${fm(fx.money)}</span>`);
-  if (fx.learn) parts.push(`<span class="fx" style="color:#00A3BD">${ja() ? "まなび" : "Learn"} +${fx.learn}</span>`);
-  if (fx.happy) parts.push(`<span class="fx" style="color:#F291B5">♥ +${fx.happy}</span>`);
-  if (!parts.length) parts.push(`<span class="fx">${ja() ? "変化なし" : "No change"}</span>`);
-  return `<div class="fx-line">${parts.join("")}</div>`;
+const tagChip = (type, label) => {
+  const m = R.TYPE_META[type] || R.TYPE_META.event;
+  return `<span class="m-tag" style="background:${m.chip}">${ic(m.icon, "s")} ${label != null ? label : L(m.label)}</span>`;
+};
+/* ステータスがどう変わったかを、前後の数字で見せる */
+function chgPanel(before, fx) {
+  const rows = [
+    ["money", ja() ? "おかね" : "Money", before.money, fx.money || 0, v => fm(v)],
+    ["learn", ja() ? "まなび" : "Learn", before.learn, fx.learn || 0, v => "★" + v],
+    ["happy", ja() ? "ハッピー" : "Happy", before.happy, fx.happy || 0, v => "♥" + v],
+  ].filter(r => r[3] !== 0);
+  if (!rows.length) return `<div class="fx-line"><span class="fx">${ja() ? "数字は変わらなかった" : "No change"}</span></div>`;
+  const emo = (fx.happy || 0) > 0 ? "joy" : ((fx.money || 0) > 0 || (fx.learn || 0) > 0 ? "fun" : "sad");
+  return `<div class="chg-body">
+    <div class="chg-char" style="background-image:url(./chars/${before.char}-${emo}.png)"></div>
+    <div class="chg-rows">${rows.map(([k, label, base, d, f]) => `
+      <div class="chg-r ${k}"><span class="k">${label}</span>
+        <span class="v"><s>${f(base)}</s>${f(base + d)}</span>
+        <span class="d ${d > 0 ? "up" : "dn"}">${d > 0 ? "+" : ""}${k === "money" ? fm(d) : d}</span></div>`).join("")}
+    </div></div>`;
+}
+function beforeOf(pid) {
+  const p = G.players.find(x => x.id === pid) || { money: 0, learn: 0, happy: 0, color: R.PCOLORS[0] };
+  return { money: p.money, learn: p.learn, happy: p.happy, char: charOf(p) };
 }
 function reqLabel(p, o) {
   const parts = [];
   if (o.req.univ) parts.push(ja() ? "大学を出ていること" : "a university degree");
-  const em = R.effectiveMoneyReq(p, o), el = R.effectiveLearnReq(p, o);
+  const em = R.effectiveMoneyReq(p, o), el2 = R.effectiveLearnReq(p, o);
   if (o.req.money) {
     const memo = [];
-    if (p.shienDiscount && (o.tag === "shien" || o.tag === "manabi")) memo.push(ja() ? "🎗支援サポートで−50万" : `🎗aid support −${fm(50)}`);
-    if (p.perk === "kokusai" && o.tag === "global") memo.push(ja() ? "🌏国際感覚で−50万" : `🌏global sense −${fm(50)}`);
+    if (p.shienDiscount && (o.tag === "shien" || o.tag === "manabi")) memo.push(ja() ? "支援サポートで−50万" : `aid support −${fm(50)}`);
+    if (p.perk === "kokusai" && o.tag === "global") memo.push(ja() ? "国際感覚で−50万" : `global sense −${fm(50)}`);
     parts.push(`${ja() ? "おかね" : "Money"} ${fm(em)}` + (memo.length ? `（${memo.join("・")}）` : ""));
   }
-  if (o.req.learn) parts.push(`${ja() ? "まなび" : "Learn"} ★${el}` + (el < o.req.learn ? (ja() ? "（🗣英語ネイティブで−2）" : "（🗣native English −2）") : ""));
+  if (o.req.learn) parts.push(`${ja() ? "まなび" : "Learn"} ★${el2}` + (el2 < o.req.learn ? (ja() ? "（英語ネイティブで−2）" : "（native English −2）") : ""));
   if (o.req.maxMoney != null) parts.push(ja() ? `所得制限 おかね${fm(o.req.maxMoney)}未満` : `Income limit: under ${fm(o.req.maxMoney)}`);
   return parts.join(" ＋ ");
 }
-const waitingNote = who => `<div class="waiting-note">⏳ ${ja() ? `${who} さんが かくにん中…` : `Waiting for ${who}…`}</div>`;
+const waitingNote = who => `<div class="waiting-note">${ic("clock", "s")} ${ja() ? `${who} さんが かくにん中…` : `Waiting for ${who}…`}</div>`;
 /* 見ているだけのときは、自分の番とはっきり見た目を変える */
-const watchHead = a => `<div class="watch-head"><span class="p-dot" style="background:${a.color}"></span>${
+const watchHead = a => `<div class="watch-head"><span class="av" style="${faceBg(a)}"></span>${
   ja() ? `${a.name} さんの番を見ています` : `Watching ${a.name}'s turn`}</div>`;
 const privNote = v => (v && (!Array.isArray(v) || v.length))
   ? `<div class="m-note priv">${(Array.isArray(v) ? v.map(L).join("<br>") : L(v))}</div>` : "";
@@ -355,32 +610,33 @@ function renderPending() {
   if (key === lastKey && isOpen()) return;
   lastKey = key;
   const mine = pd.for === MYPID;
-  const actor = G.players.find(p => p.id === pd.for) || { name: "?" };
-  const m = R.TYPE_META[pd.type === "learn" ? "learn" : (pd.type === "heavy" ? "heavy" : (pd.type === "event" ? "event" : "choice"))];
+  const actor = G.players.find(p => p.id === pd.for) || { name: "?", color: R.PCOLORS[0] };
+  const type = pd.type === "heavy" ? "heavy" : (["learn", "event", "income", "cost"].includes(pd.type) ? pd.type : "choice");
 
   if (pd.kind === "info") {
-    const mm = R.TYPE_META[pd.type] || m;
-    openModal(`${mine ? "" : watchHead(actor)}
-      <span class="m-tag" style="background:${mm.tag}">${mm.ic} ${L(mm.label)}</span>
-      <h2>${L(pd.title)}</h2>
-      <p class="m-body">${L(pd.body)}</p>
-      ${pd.note ? `<div class="m-note">${L(pd.note)}</div>` : ""}
-      ${privNote(pd.pnote)}
-      ${fxChips(pd.fx)}
-      ${mine ? `<button class="m-btn" id="mOk">OK</button>` : waitingNote(actor.name)}`, !mine);
+    openModal(`<div class="m-head">${mine ? "" : watchHead(actor)}
+        ${tagChip(pd.type === "heavy" ? "heavy" : (R.TYPE_META[pd.type] ? pd.type : "event"))}
+        <h2>${L(pd.title)}</h2></div>
+      <div class="m-body">
+        <p class="m-lead">${L(pd.body)}</p>
+        ${pd.note ? `<div class="m-note">${L(pd.note)}</div>` : ""}
+        ${privNote(pd.pnote)}
+        ${chgPanel(beforeOf(pd.for), pd.fx || {})}
+        ${mine ? `<button class="m-btn" id="mOk">OK</button>` : waitingNote(actor.name)}
+      </div>`, !mine);
     if (mine) $("mOk").onclick = () => { send({ t: "ok" }); };
   }
   else if (pd.kind === "result") {
-    openModal(`${mine ? "" : watchHead(actor)}
-      <span class="m-tag" style="background:${m.tag}">${m.ic} ${mine
-        ? (ja() ? "えらんだ！" : "Chosen!")
-        : (ja() ? `${actor.name} さんが えらんだ` : `${actor.name} chose`)}</span>
-      <h2>${L(pd.title)}</h2>
-      <p class="m-body">${L(pd.body)}${ja() ? "。" : "."}</p>
-      ${pd.notes && pd.notes.length ? `<div class="m-note">${pd.notes.map(L).join("<br>")}</div>` : ""}
-      ${privNote(pd.pnotes)}
-      ${fxChips(pd.fx)}
-      ${mine ? `<button class="m-btn" id="mOk">OK</button>` : waitingNote(actor.name)}`, !mine);
+    openModal(`<div class="m-head">${mine ? "" : watchHead(actor)}
+        ${tagChip(type, mine ? (ja() ? "えらんだ！" : "Chosen!") : (ja() ? `${actor.name} さんが えらんだ` : `${actor.name} chose`))}
+        <h2>${L(pd.title)}</h2></div>
+      <div class="m-body">
+        <p class="m-lead">${L(pd.body)}${ja() ? "。" : "."}</p>
+        ${pd.notes && pd.notes.length ? `<div class="m-note">${pd.notes.map(L).join("<br>")}</div>` : ""}
+        ${privNote(pd.pnotes)}
+        ${chgPanel(beforeOf(pd.for), pd.fx || {})}
+        ${mine ? `<button class="m-btn" id="mOk">OK</button>` : waitingNote(actor.name)}
+      </div>`, !mine);
     if (mine) $("mOk").onclick = () => { send({ t: "ok" }); };
   }
   else if (pd.kind === "choice" && !mine) {
@@ -389,8 +645,8 @@ function renderPending() {
     openModal(`${watchHead(actor)}
       <div class="watch-body">
         <p class="watch-lead">${ja() ? "いま、このトビラの前に立っています。" : "Standing in front of this door."}</p>
-        <div class="watch-door">${pd.def.heavy ? "⚠️" : "🚪"} ${L(pd.def.title)}</div>
-        <div class="watch-wait">⏳ ${ja() ? `${actor.name} さんが えらんでいます…` : `${actor.name} is choosing…`}</div>
+        <div class="watch-door">${ic(pd.def.heavy ? "bolt" : "door")} ${L(pd.def.title)}</div>
+        <div class="watch-wait">${ja() ? `${actor.name} さんが えらんでいます…` : `${actor.name} is choosing…`}</div>
         <p class="watch-lead">${ja() ? "えらび終わったら、みんなに結果が出ます。" : "The result appears for everyone once they choose."}</p>
       </div>`, true);
   }
@@ -399,40 +655,41 @@ function renderPending() {
     const doors = R.shuffle(pd.opts.map((_, i) => i)).map(i => {
       const o = pd.opts[i], st = pd.states[i];
       if (st === "unseen") return `<button class="door unseen" disabled>
-        <span class="d-icon">❓</span><span class="d-main">
           <span class="d-title">？？？</span>
-          <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></span></button>`;
+          <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></button>`;
       const key2 = reqLabel(p, o), ok = st === "open";
       const em = R.effectiveMoneyReq(p, o), raw = o.fx.money || 0, efx = R.effectiveMoneyFx(p, o);
       const cut = efx !== raw, redundant = o.req.money && efx === -em;
       const loan = o.special === "shogakukin" && !(p.shienDiscount || p.perk === "shienPro");
       const cost = ((efx || cut) && !redundant)
-        ? `<span class="d-key d-cost ${efx < 0 ? "minus" : "plus"}">${cut ? "🎗" : (efx < 0 ? "💸" : "💰")} ${ja() ? "おかね" : "Money"} ${cut ? `<s>${fm(raw)}</s>→` : ""}${efx > 0 ? "+" : ""}${fm(efx)}${loan ? (ja() ? "＋返済" : " + repayment") : ""}</span>` : "";
+        ? `<span class="d-cost ${efx < 0 ? "minus" : "plus"}">${ic("coin", "s")} ${ja() ? "おかね" : "Money"} ${cut ? `<s>${fm(raw)}</s>→` : ""}${efx > 0 ? "+" : ""}${fm(efx)}${loan ? (ja() ? "＋返済" : " + repayment") : ""}</span>` : "";
       /* 何が足りないのかを取りちがえないように、理由ごとに書きわける。
          大学のカギだけは、いまさら取りに行けないもの */
       const short = (o.req.univ && !p.univ)
         ? (ja() ? "（大学に行っていない…）" : " (no degree…)")
         : (o.req.maxMoney != null && p.money >= o.req.maxMoney
           ? (ja() ? "（対象外…）" : " (not eligible…)") : (ja() ? "（たりない…）" : " (not enough…)"));
-      return `<button class="door" data-i="${i}" ${ok && mine ? "" : "disabled"}>
-        <span class="d-icon">${ok ? "🚪" : "🔒"}</span>
-        <span class="d-main">
+      return `<button class="door ${ok ? "open" : "locked"}" data-i="${i}" ${ok && mine ? "" : "disabled"}>
           <span class="d-title">${L(o.t)}</span>
           <span class="d-desc">${L(o.d)}</span>
-          ${key2 ? `<span class="d-key">${ja() ? "カギ：" : "Key: "}${key2}${ok ? "" : short}</span>` : ""}${cost}
-        </span></button>`;
+          ${key2 ? `<span class="d-key">${ic(ok ? "door" : "lock", "s")}${ja() ? "カギ：" : "Key: "}${key2}${ok ? "" : short}</span>` : ""}${cost}
+        </button>`;
     }).join("");
     const stuck = !(pd.states || []).includes("open");
-    openModal(`
-      <span class="m-tag" style="background:${m.tag}">${m.ic} ${pd.def.heavy ? L(R.TYPE_META.heavy.label) : L(m.label)}</span>
-      <h2>${L(pd.def.title)}</h2>
-      <p class="m-body">${L(pd.def.body)}<br>${ja()
-        ? `<b>${p.name}</b> さん（${R.AGES[p.pos]}歳）：おかね ${fm(p.money)} ／ まなび ★${p.learn}`
-        : `<b>${p.name}</b> (Age ${R.AGES[p.pos]}): Money ${fm(p.money)} / Learn ★${p.learn}`}</p>
-      <div class="door-list">${doors}</div>
-      ${stuck && mine ? `<div class="m-note" style="margin-top:14px">${ja() ? "開けられるトビラが、ひとつもなかった…。" : "Not a single door would open…"}</div>
-        <button class="m-btn" id="mPass">${ja() ? "今回は見送る" : "Pass this time"}</button>` : ""}
-      ${mine ? "" : waitingNote(actor.name)}`);
+    openModal(`<div class="m-head">
+        ${tagChip(pd.def.heavy ? "heavy" : "choice")}
+        <h2>${L(pd.def.title)}</h2>
+        <p class="m-sub">${ja()
+          ? `${p.name}・${R.AGES[p.pos]}歳 ／ おかね ${fm(p.money)} ／ まなび ★${p.learn}`
+          : `${p.name} · Age ${R.AGES[p.pos]} / Money ${fm(p.money)} / Learn ★${p.learn}`}</p>
+      </div>
+      <div class="m-body">
+        <p class="m-lead">${L(pd.def.body)}</p>
+        <div class="door-list">${doors}</div>
+        ${stuck && mine ? `<div class="m-note" style="margin-top:14px">${ja() ? "開けられるトビラが、ひとつもなかった…。" : "Not a single door would open…"}</div>
+          <button class="m-btn" id="mPass">${ja() ? "今回は見送る" : "Pass this time"}</button>` : ""}
+        ${mine ? "" : waitingNote(actor.name)}
+      </div>`);
     if (stuck && mine && $("mPass")) $("mPass").onclick = () => send({ t: "choose", i: -1, pass: true });
     if (mine) document.querySelectorAll("#modalBox .door:not(:disabled)").forEach(b => {
       b.onclick = () => send({ t: "choose", i: +b.dataset.i });
@@ -441,14 +698,16 @@ function renderPending() {
   else if (pd.kind === "goal") {
     /* 25歳では返し終わらない。清算せず、背負ったまま先へ進む */
     const loanNote = pd.loan > 0
-      ? `<div class="m-note">${ja() ? `🎓 奨学金が、まだ <b>${fm(pd.loan)}</b> のこっている。<br>25歳——返済は、これからも続く。`
-        : `🎓 <b>${fm(pd.loan)}</b> of your scholarship is still unpaid.<br>Age 25 — the repayments go on.`}</div>` : "";
-    openModal(`${mine ? "" : watchHead(actor)}
-      <span class="m-tag" style="background:#4A3A30">🏁 ${L(R.TYPE_META.goal.label)}</span>
-      <h2>${ja() ? `${actor.name} さん、25歳でゴール！` : `${actor.name} reached the goal at 25!`}</h2>
-      <p class="m-body">${ja() ? `6歳からの19年間、おつかれさま！ ${pd.rankAt}番目のゴールです。` : `19 years from age 6 — well done! Finished #${pd.rankAt}.`}</p>
-      ${loanNote}${fxChips(pd.fx)}
-      ${mine ? `<button class="m-btn" id="mOk">OK</button>` : waitingNote(actor.name)}`, !mine);
+      ? `<div class="m-note">${ja() ? `奨学金が、まだ <b>${fm(pd.loan)}</b> のこっている。<br>25歳——返済は、これからも続く。`
+        : `<b>${fm(pd.loan)}</b> of your scholarship is still unpaid.<br>Age 25 — the repayments go on.`}</div>` : "";
+    openModal(`<div class="m-head">${mine ? "" : watchHead(actor)}
+        ${tagChip("goal")}
+        <h2>${ja() ? `${actor.name} さん、25歳でゴール！` : `${actor.name} reached the goal at 25!`}</h2></div>
+      <div class="m-body">
+        <p class="m-lead">${ja() ? `6歳からの19年間、おつかれさま！ ${pd.rankAt}番目のゴールです。` : `19 years from age 6 — well done! Finished #${pd.rankAt}.`}</p>
+        ${loanNote}${chgPanel(beforeOf(pd.for), pd.fx || {})}
+        ${mine ? `<button class="m-btn" id="mOk">OK</button>` : waitingNote(actor.name)}
+      </div>`, !mine);
     if (mine) $("mOk").onclick = () => send({ t: "ok" });
   }
 }
@@ -457,29 +716,42 @@ function renderPending() {
 function showCard(review) {
   if (!YOU) return;
   const p = YOU;
-  const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0 };
+  const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0, color: R.PCOLORS[0] };
   /* タグの数ではなく、これから出会う「？？？」の実数を出す。
      タグ数だと結果発表の 👁 の数と食いちがう（例：タグ3個でも選択肢は5個） */
   const hiddenN = R.hiddenOptionCount(p, me.pos || 0);
+  const tone = R.FAM_TONE[p.fam.region.ja] || ["#E9A87C", "#D98E63"];
   lastKey = "card";
   openModal(`
-    <span class="m-tag" style="background:${R.TYPE_META.fam.tag}">🏠 ${L(R.TYPE_META.fam.label)}</span>
-    <div class="fam-card">
-      <div class="f-name">${L(p.fam.name)}</div>
-      <div class="f-story">${L(p.fam.story)}</div>
-      <div class="f-story f-asa">🌅 <b>${ja() ? "あなたの朝" : "Your morning"}</b>：${L(p.fam.asa)}</div>
-      <div class="f-stats">
-        <span class="fs-money">💰 ${ja() ? "いまのおかね" : "Money now"}：<b>${fm(me.money)}</b></span>
-        <span class="fs-daily">🍚 ${ja() ? "1日の生活費" : "Daily living cost"}：<b>${L(p.fam.daily)}</b>${p.fam.dailyNote ? "（" + L(p.fam.dailyNote) + "）" : ""}</span>
-        <span class="fs-wage">💼 ${ja() ? "おしごとの基本給" : "Base pay"}：<b>${fm(p.fam.wage)}</b>（${ja() ? "＋まなび×" : "＋Learn×"}<b>${fm(p.mult)}</b>）</span>
-        <span class="fs-allow">📮 ${ja() ? "仕送り" : "Allowance"}：<b>${p.allow > 0 ? (ja() ? "毎回のかせぎ +" + fm(p.allow) : "+" + fm(p.allow) + " per payday") : (ja() ? "なし" : "none")}</b></span>
-        <span class="fs-region">🌍 ${ja() ? "生まれた場所" : "Born in"}：<b>${L(p.fam.region)}</b></span>
-        <span class="fs-hidden">👁 ${ja() ? "まだ見えていない選択肢" : "Options you can't see yet"}：<b>${hiddenN}${ja() ? "個" : ""}</b>${hiddenN > 0 ? (ja() ? "（そのマスでは「？？？」と表示されます）" : " (shown as ？？？ on those squares)") : ""}</span>
-        <span class="fs-perk">✨ ${ja() ? "とくい" : "Strength"}：<b>${L(p.fam.perkText)}</b></span>
+    <div class="fam-top" style="background:linear-gradient(120deg,${tone[0]},${tone[1]})">
+      <div class="av" style="${faceBg(me)}"></div>
+      <div style="min-width:0">
+        <span class="pill">${ic("home", "s")} ${L(R.TYPE_META.fam.label)}</span>
+        <div class="nm">${L(p.fam.name)}</div>
       </div>
     </div>
-    <p class="m-body" style="font-size:13px; opacity:.8">${ja() ? "🔒 このカードは、あなたの端末にしか表示されません。" : "🔒 This card is shown only on your device."}</p>
-    <button class="m-btn" id="mCard">${review ? (ja() ? "とじる" : "Close") : (ja() ? "OK、覚えた" : "Got it")}</button>`);
+    <div class="m-body">
+      <div class="fam-story">${L(p.fam.story)}
+        <div class="fam-asa">${ic("sun", "s")} <b>${ja() ? "あなたの朝" : "Your morning"}</b>：${L(p.fam.asa)}</div>
+      </div>
+      <div class="fam-stats">
+        <div class="fs wide"><div class="k">${ja() ? "いまのおかね" : "Money now"}</div><div class="v">${fm(me.money)}</div></div>
+        <div class="fs"><div class="k">${ja() ? "おしごとの基本給" : "Base pay"}</div>
+          <div class="v">${fm(p.fam.wage)} <small>${ja() ? `＋★×${fm(p.mult)}` : `+★×${fm(p.mult)}`}</small></div></div>
+        <div class="fs"><div class="k">${ja() ? "仕送り" : "Allowance"}</div>
+          <div class="v">${p.allow > 0 ? `+${fm(p.allow)}` : (ja() ? "なし" : "none")}
+            <small>${p.allow > 0 ? (ja() ? "かせぐたび" : "per payday") : ""}</small></div></div>
+      </div>
+      <div class="fam-perk">
+        <div class="k">${ic("spark", "s")} ${ja() ? "あなたのとくい" : "Your strength"}</div>
+        <div class="v">${L(p.fam.perkText)}</div>
+      </div>
+      ${hiddenN > 0 ? `<div class="fam-hid">${ic("eye", "s")}<span>${ja()
+        ? `このさき、<b>${hiddenN}個</b>の選択肢は「？？？」としか見えません。`
+        : `<b>${hiddenN}</b> options ahead will show only as ？？？.`}</span></div>` : ""}
+      <div class="fam-secret">${ic("lock", "s")} ${ja() ? "このカードは、あなたの端末にしか表示されません。" : "This card is shown only on your device."}</div>
+      <button class="m-btn" id="mCard">${review ? (ja() ? "とじる" : "Close") : (ja() ? "OK、覚えた" : "Got it")}</button>
+    </div>`);
   $("mCard").onclick = () => { closeModal(); if (!review) send({ t: "seen" }); };
 }
 
@@ -500,8 +772,8 @@ function render() {
       : (ja() ? "進行役が開始するのを待っています…" : "Waiting for the host to start…");
     $("waitList").innerHTML = G.players.map(p =>
       `<div class="p-row wait-row"><span class="p-dot" style="background:${p.color}"></span>
-       <span style="flex:1; font-weight:700">${p.name}${p.id === MYPID ? `<span class="mine-badge">${ja() ? "あなた" : "you"}</span>` : ""}${p.id === G.hostId ? " 👑" : ""}</span>
-       <span class="st">${p.connected ? "🟢" : "⚪️"}</span>
+       <span style="flex:1; font-weight:700">${p.name}${p.id === MYPID ? `<span class="mine-badge">${ja() ? "あなた" : "you"}</span>` : ""}${p.id === G.hostId ? (ja() ? "・進行役" : " · host") : ""}</span>
+       <span class="st">${p.connected ? (ja() ? "接続中" : "online") : (ja() ? "切断中" : "offline")}</span>
        ${host && p.id !== MYPID ? `<button class="rm" data-kick="${p.id}" aria-label="remove">✕</button>` : ""}</div>`).join("");
     $("waitList").querySelectorAll("[data-kick]").forEach(b => b.onclick = () => {
       const p = G.players.find(x => x.id === b.dataset.kick) || { name: "" };
@@ -511,14 +783,14 @@ function render() {
     /* 進行役の端末が落ちて戻ってこないとき、残った人が引きつげる */
     const hostP = G.players.find(p => p.id === G.hostId);
     $("claimWrap").style.display = (!host && hostP && !hostP.connected) ? "" : "none";
-    $("claimBtn").textContent = ja() ? `👑 進行役を引きつぐ（${hostP ? hostP.name : ""} さんが切断中）` : `👑 Take over as host (${hostP ? hostP.name : ""} is offline)`;
+    $("claimBtn").textContent = ja() ? `進行役を引きつぐ（${hostP ? hostP.name : ""} さんが切断中）` : `Take over as host (${hostP ? hostP.name : ""} is offline)`;
     closeModal(); closeHost();
   }
   else if (G.phase === "cards") {
     showScreen("game");
     hostTools();
     renderBoard(); renderStrip(); shown = {}; renderTokens();
-    $("turnPill").innerHTML = `<span class="tp-txt">${ja() ? "🏠 家庭カードをかくにん中" : "🏠 Checking family cards"}</span>`;
+    $("turnPill").innerHTML = `<span class="tp-txt">${ja() ? "家庭カードをかくにん中" : "Checking family cards"}</span>`;
     $("diceBtn").disabled = true;
     $("diceLabel").textContent = ja() ? "まっています" : "Waiting";
     $("diceFace").style.display = "none";
@@ -527,12 +799,14 @@ function render() {
       const yet = G.players.filter(p => !p.seen);
       const names = yet.map(p => p.name + (p.connected ? "" : ja() ? "（切断中）" : " (offline)")).join(ja() ? "、" : ", ");
       lastKey = "waitcards";
-      openModal(`<span class="m-tag" style="background:${R.TYPE_META.fam.tag}">🏠 ${L(R.TYPE_META.fam.label)}</span>
-        <h2>${ja() ? "みんながカードを見ています" : "Everyone is checking their card"}</h2>
-        <p class="m-body">${ja() ? `まだの人：<b>${names}</b>` : `Still looking: <b>${names}</b>`}</p>
-        <button class="chip-btn" id="mAgainCard" style="display:block;margin:0 auto">${ja() ? "自分のカードをもう一度見る" : "See my card again"}</button>
-        ${iAmHost() ? `<button class="chip-btn" id="mForce" style="display:block;margin:10px auto 0">${ja()
-          ? "▶ 待たずに始める（進行役）" : "▶ Start without them (host)"}</button>` : ""}`);
+      openModal(`<div class="m-head">${tagChip("fam")}
+          <h2>${ja() ? "みんながカードを見ています" : "Everyone is checking their card"}</h2></div>
+        <div class="m-body">
+          <p class="m-lead">${ja() ? `まだの人：<b>${names}</b>` : `Still looking: <b>${names}</b>`}</p>
+          <button class="m-btn ghost" id="mAgainCard">${ja() ? "自分のカードをもう一度見る" : "See my card again"}</button>
+          ${iAmHost() ? `<button class="m-btn" id="mForce">${ja()
+            ? "待たずに始める（進行役）" : "Start without them (host)"}</button>` : ""}
+        </div>`);
       $("mAgainCard").onclick = () => showCard(true);
       if ($("mForce")) $("mForce").onclick = () => {
         if (!ask({ ja: `まだカードを見ていない人（${names}）を待たずに始めます。よろしいですか？`,
@@ -551,22 +825,22 @@ function render() {
     stepAnim();
     const cur = G.players[G.turn];
     const mine = cur && cur.id === MYPID;
-    $("turnPill").innerHTML = `<span class="p-dot" style="background:${cur.color}"></span>`
+    $("turnPill").innerHTML = `<span class="av" style="${faceBg(cur)}; border-color:${cur.color}"></span>`
       + `<span class="tp-txt">${ja() ? `${cur.name} さんの番・${R.AGES[cur.pos]}歳` : `${cur.name}'s turn · Age ${R.AGES[cur.pos]}`}</span>`
-      + (cur.connected ? "" : `<span class="tp-off">${ja() ? "⚠️ 切断中" : "⚠️ offline"}</span>`);
+      + (cur.connected ? "" : `<span class="tp-off">${ja() ? "切断中" : "offline"}</span>`);
     const child = cur.pos < 4;
     $("diceFace").style.display = child ? "none" : "grid";
-    $("diceFace").textContent = G.dice || "?";
+    if (!spinTimer) diceFace(G.dice || 1);
     $("diceBtn").disabled = !(mine && !G.pending);
     $("diceLabel").textContent = mine
-      ? (child ? (ja() ? "🧒 一歩すすむ" : "🧒 Step forward") : (ja() ? "サイコロを回す" : "Roll the dice"))
+      ? (child ? (ja() ? "一歩すすむ" : "Step forward") : (ja() ? "サイコロを回す" : "Roll the dice"))
       : (ja() ? `${cur.name} さんの番` : `${cur.name}'s turn`);
     renderPending();
   }
   else if (G.phase === "result") { showScreen("result"); closeModal(); closeHost(); showResult(); }
 }
 
-/* 進行役だけに🛠を出し、パネルを開いたままなら中身を最新にする */
+/* 進行役だけに工具アイコンを出し、パネルを開いたままなら中身を最新にする */
 function hostTools() {
   $("hostBtn").style.display = iAmHost() ? "" : "none";
   if (hostOpen()) renderHostPanel();
@@ -583,34 +857,39 @@ function showResult() {
     const total = p.open + p.locked + p.unseen;
     const pct = n => total ? Math.round(n / total * 100) : 0;
     const diff = p.money - p.initMoney;
+    const tone = R.FAM_TONE[p.fam.region.ja] || ["#E9A87C", "#D98E63"];
     const card = document.createElement("div");
     card.className = "res-card";
     card.innerHTML = `
-      <span class="rank">${ja() ? `${i + 1}位` : `#${i + 1}`}</span>
-      <div class="r-name"><span class="p-dot" style="background:${p.color}"></span>${p.name}
-        <span class="r-fam">🏠 ${L(p.fam.name)}</span></div>
-      <div class="r-story">${L(p.fam.story)}</div>
-      <div class="r-stats">
-        <span class="fx" style="color:#F291B5">♥ ${p.happy}</span>
-        <span class="fx">${ja() ? `残金 ${fm(p.money)}（スタート比 ${diff >= 0 ? "+" : ""}${fm(diff)}）` : `Left: ${fm(p.money)} (${diff >= 0 ? "+" : ""}${fm(diff)} vs start)`}</span>
-        <span class="fx" style="color:#00A3BD">${ja() ? "まなび" : "Learn"} ★${p.learn}</span>
-        ${p.loan > 0 ? `<span class="fx" style="color:#c77f00">${ja() ? `🎓 奨学金がまだ ${fm(p.loan)} のこっている` : `🎓 ${fm(p.loan)} of scholarship still unpaid`}</span>` : ""}
+      <div class="res-head">
+        <div class="av" style="${faceBg(p)}; border-color:${p.color}"></div>
+        <div style="min-width:0">
+          <span class="rank">${ja() ? `${i + 1}位` : `#${i + 1}`}</span>
+          <div class="r-name">${p.name}</div>
+          <div class="r-fam" style="color:${tone[1]}">${ic("home", "s")} ${L(p.fam.name)}</div>
+        </div>
       </div>
-      <div class="r-ending">🌅 <b>${ja() ? "25歳のいま" : "Life at 25"}</b>：${L(R.endingText(p, playing.length === 1))}</div>
+      <div class="r-stats">
+        <span class="fx m3">♥ ${p.happy}</span>
+        <span class="fx m1">${fm(p.money)} <small style="font-weight:700">(${diff >= 0 ? "+" : ""}${fm(diff)})</small></span>
+        <span class="fx m2">★ ${p.learn}</span>
+        ${p.loan > 0 ? `<span class="fx" style="color:#C98A3C">${ja() ? `奨学金 ${fm(p.loan)} 未返済` : `${fm(p.loan)} unpaid`}</span>` : ""}
+      </div>
+      <div class="r-ending"><b>${ja() ? "25歳のいま" : "Life at 25"}</b>：${L(R.endingText(p, playing.length === 1))}</div>
       <div class="doorbar">
         <div class="seg-open" style="width:${pct(p.open)}%"></div>
         <div class="seg-lock" style="width:${pct(p.locked)}%"></div>
         <div class="seg-unseen" style="width:${pct(p.unseen)}%"></div>
       </div>
       <div class="doorbar-label">${ja()
-        ? `出会ったトビラ ${total}枚 ── 🚪 開けられた <b>${p.open}</b>／🔒 カギが足りなかった <b>${p.locked}</b>／👁 見えていなかった <b>${p.unseen}</b>`
-        : `${total} doors met ── 🚪 opened <b>${p.open}</b> / 🔒 short of keys <b>${p.locked}</b> / 👁 never saw <b>${p.unseen}</b>`}</div>
-      <button class="chip-btn rv-btn" data-p="${p.id}">${ja() ? "🚪 トビラのネタバラシを見る" : "🚪 See this player's door reveal"}</button>`;
+        ? `出会ったトビラ ${total}枚 ── <span class="lo">開けられた ${p.open}</span>／<span class="ll">カギが足りなかった ${p.locked}</span>／<span class="lu">見えていなかった ${p.unseen}</span>`
+        : `${total} doors met ── <span class="lo">opened ${p.open}</span> / <span class="ll">short of keys ${p.locked}</span> / <span class="lu">never saw ${p.unseen}</span>`}</div>
+      <button class="chip-btn rv-btn" data-p="${p.id}">${ja() ? "トビラのネタバラシを見る" : "See this player's door reveal"}</button>`;
     list.appendChild(card);
   });
   list.querySelectorAll(".rv-btn").forEach(b => b.onclick = () => showRevealModal(b.dataset.p));
   $("resLeftNote").innerHTML = gone.length
-    ? (ja() ? `🚪 とちゅうで抜けた人：${gone.map(p => p.name).join("、")}` : `🚪 Left partway: ${gone.map(p => p.name).join(", ")}`)
+    ? (ja() ? `とちゅうで抜けた人：${gone.map(p => p.name).join("、")}` : `Left partway: ${gone.map(p => p.name).join(", ")}`)
     : "";
   const totalUnseen = playing.reduce((s, p) => s + p.unseen, 0);
   /* 1人プレイでは「見くらべ」が成立しない。ネタバラシとトビラ一覧が主役になる */
@@ -625,9 +904,9 @@ function showResult() {
     それはウガンダの家庭だけの話じゃない——<b>支え合いのトビラ</b>は、めぐまれた家庭からこそ見えなかったはず。<br>
     カギが足りないのと、扉があることを知らないのは、ぜんぜん違う。<br><br>
     ${solo
-      ? "🚪 <b>「ネタバラシ」ボタン</b>で？？？の中身を、<b>「19年間のトビラ一覧」</b>で通らなかった道を見てみよう。ここがこのゲームの本番。"
-      : "🚪 それぞれのカードの<b>「ネタバラシ」ボタン</b>で、？？？の中身をのぞいてみよう。"}<br><br>
-    ${solo ? "🗣 考えてみよう：" : "🗣 話してみよう："}<br>
+      ? "<b>「ネタバラシ」ボタン</b>で？？？の中身を、<b>「19年間のトビラ一覧」</b>で通らなかった道を見てみよう。ここがこのゲームの本番。"
+      : "それぞれのカードの<b>「ネタバラシ」ボタン</b>で、？？？の中身をのぞいてみよう。"}<br><br>
+    ${solo ? "考えてみよう：" : "話してみよう："}<br>
     ・同じ「おしごとマス」・同じ★の数なのに、かせぎがぜんぜんちがった。それは本人の努力のちがいだろうか？<br>
     ・ウガンダ育ちは、★を増やすだけではかせぎが伸びなかった。「まなび」が実るために必要だった<b>もうひとつのカギ</b>は何だった？<br>
     ・あなたの家庭カードから見えなかったのは、どんなトビラだった？　逆に、見えていた強みは？<br>
@@ -644,9 +923,9 @@ function showResult() {
     And that's not only about the Ugandan families — the <b>doors of community support</b> were invisible to the well-off families.<br>
     Lacking a key, and not knowing a door exists, are very different things.<br><br>
     ${solo
-      ? "🚪 Open the <b>Reveal button</b> to see inside the ？？？, and <b>All doors of the 19 years</b> to see the roads you never walked. This is where the game really happens."
-      : "🚪 Use each player's <b>Reveal button</b> to peek inside the ？？？."}<br><br>
-    ${solo ? "🗣 Think about it:" : "🗣 Talk about it:"}<br>
+      ? "Open the <b>Reveal button</b> to see inside the ？？？, and <b>All doors of the 19 years</b> to see the roads you never walked. This is where the game really happens."
+      : "Use each player's <b>Reveal button</b> to peek inside the ？？？."}<br><br>
+    ${solo ? "Think about it:" : "Talk about it:"}<br>
     · Same work square, same ★ — completely different pay. Was that about effort?<br>
     · For those raised in Uganda, more ★ alone didn't raise pay. What was <b>the other key</b> that made learning bear fruit?<br>
     · Which doors were invisible from your Family Card? And what strengths could you see?<br>
@@ -667,35 +946,37 @@ function rawReqLabel(o) {
 }
 function fxInline(fx) {
   const parts = [];
-  if (fx.money) parts.push(`💰${fx.money > 0 ? "+" : ""}${fm(fx.money)}`);
+  if (fx.money) parts.push(`${fx.money > 0 ? "+" : ""}${fm(fx.money)}`);
   if (fx.learn) parts.push(`★+${fx.learn}`);
   if (fx.happy) parts.push(`♥+${fx.happy}`);
   return parts.join(" ");
 }
 const RV_META = {
-  chosen: ["✅", { ja: "えらんだ", en: "Chosen" }], open: ["🚪", { ja: "開けられた", en: "Could open" }],
-  locked: ["🔒", { ja: "カギ不足", en: "Short of keys" }], unseen: ["👁", { ja: "見えてなかった！", en: "Never saw it!" }],
+  chosen: ["check", { ja: "えらんだ", en: "Chosen" }, "#4CA872"],
+  open: ["door", { ja: "開けられた", en: "Could open" }, "#4CA872"],
+  locked: ["lock", { ja: "カギ不足", en: "Short of keys" }, "#C98A3C"],
+  unseen: ["eye", { ja: "見えてなかった！", en: "Never saw it!" }, "#7E6BC4"],
 };
 function showRevealModal(pid) {
   const p = G.players.find(x => x.id === pid);
   const secs = (p.doorLog || []).map(e => {
     const rows = e.opts.map((o, i) => {
       const st = e.chosen === i ? "chosen" : e.states[i];
-      const [ic, label] = RV_META[st];
+      const [icon, label, col] = RV_META[st];
       const key = rawReqLabel(o), fx = fxInline(o.fx);
-      return `<div class="rv-opt ${st}"><span class="rv-ic">${ic}</span>
+      return `<div class="rv-opt ${st}"><span class="rv-ic" style="color:${col}">${ic(icon)}</span>
         <span class="rv-main"><span class="rv-t">${L(o.t)}</span><span class="rv-d">${L(o.d)}</span>
-        <span class="rv-meta">🔑 ${key || (ja() ? "カギなし" : "No key")}${fx ? `　→ ${fx}` : ""}</span></span>
+        <span class="rv-meta">${key || (ja() ? "カギなし" : "No key")}${fx ? `　→ ${fx}` : ""}</span></span>
         <span class="rv-st">${L(label)}</span></div>`;
     }).join("");
     return `<div class="rv-door"><div class="rv-title">${e.age != null ? fage(e.age) + " ── " : ""}${L(e.title)}${e.variant ? `（${L(e.variant)}）` : ""}</div>${rows}</div>`;
   }).join("");
   openModal(`<div class="rule-page">
       <button class="rule-close" id="rvClose">✕</button>
-      <span class="m-tag" style="background:var(--brown)">🚪 ${ja() ? "ネタバラシ" : "The Reveal"}</span>
+      ${tagChip("choice", ja() ? "ネタバラシ" : "The Reveal")}
       <h2>${ja() ? `${p.name} さんが出会ったトビラ、ぜんぶ` : `Every door ${p.name} met`}</h2>
-      <p class="m-body">${ja() ? "👁は、ゲーム中「？？？」で中身が見えなかったトビラ。<br>ほんとうは、こんな選択肢だった——" : "👁 marks options hidden as ？？？ during the game.<br>Here's what they really were —"}</p>
-      <div class="rv-list">${secs || `<p class='m-body'>${ja() ? "トビラには出会わなかったみたい。" : "No doors were met."}</p>`}</div>
+      <p class="m-lead" style="text-align:left">${ja() ? "紫は、ゲーム中「？？？」で中身が見えなかったトビラ。<br>ほんとうは、こんな選択肢だった——" : "Purple marks options hidden as ？？？ during the game.<br>Here's what they really were —"}</p>
+      <div class="rv-list">${secs || `<p class='m-lead'>${ja() ? "トビラには出会わなかったみたい。" : "No doors were met."}</p>`}</div>
       <button class="m-btn" id="rvOk">${ja() ? "とじる" : "Close"}</button></div>`);
   $("rvClose").onclick = closeModal; $("rvOk").onclick = closeModal;
 }
@@ -726,19 +1007,19 @@ function showAllDoorsModal() {
   const secs = [...map.values()].sort((a, b) => a.age - b.age).map(g => {
     const rows = g.opts.map((o, i) => {
       const st = g.perOpt[i], key = rawReqLabel(o), fx = fxInline(o.fx), lines = [];
-      if (st.chosen.length) lines.push(`<div class="rv-who">✅ ${ja() ? "えらんだ" : "Chose"}：${whoChips(st.chosen)}</div>`);
-      if (st.locked.length) lines.push(`<div class="rv-who">🔒 ${ja() ? "カギ不足" : "Short of keys"}：${whoChips(st.locked)}</div>`);
-      if (st.unseen.length) lines.push(`<div class="rv-who" style="color:#c77f00">👁 ${ja() ? "見えなかった" : "Couldn't see"}：${whoChips(st.unseen)}</div>`);
+      if (st.chosen.length) lines.push(`<div class="rv-who" style="color:#4CA872">${ic("check", "s")} ${ja() ? "えらんだ" : "Chose"}：${whoChips(st.chosen)}</div>`);
+      if (st.locked.length) lines.push(`<div class="rv-who" style="color:#C98A3C">${ic("lock", "s")} ${ja() ? "カギ不足" : "Short of keys"}：${whoChips(st.locked)}</div>`);
+      if (st.unseen.length) lines.push(`<div class="rv-who" style="color:#7E6BC4">${ic("eye", "s")} ${ja() ? "見えなかった" : "Couldn't see"}：${whoChips(st.unseen)}</div>`);
       return `<div class="rv-opt ${st.unseen.length ? "unseen" : ""}"><span class="rv-main">
         <span class="rv-t">${L(o.t)}</span><span class="rv-d">${L(o.d)}</span>
-        <span class="rv-meta">🔑 ${key || (ja() ? "カギなし" : "No key")}${fx ? `　→ ${fx}` : ""}</span>${lines.join("")}</span></div>`;
+        <span class="rv-meta">${key || (ja() ? "カギなし" : "No key")}${fx ? `　→ ${fx}` : ""}</span>${lines.join("")}</span></div>`;
     }).join("");
     return `<div class="rv-door"${g.untrodden ? ' style="opacity:.75"' : ""}>
-      <div class="rv-title">🚪 ${fage(g.age)} ── ${L(g.title)}${g.variant ? `（${L(g.variant)}）` : ""}${g.untrodden ? `<span class="rv-untrod">🚶 ${ja() ? "だれも通らなかった" : "no one passed here"}</span>` : ""}</div>${rows}</div>`;
+      <div class="rv-title">${fage(g.age)} ── ${L(g.title)}${g.variant ? `（${L(g.variant)}）` : ""}${g.untrodden ? `<span class="rv-untrod">${ic("walk", "s")} ${ja() ? "だれも通らなかった" : "no one passed here"}</span>` : ""}</div>${rows}</div>`;
   }).join("");
   openModal(`<div class="rule-page">
       <button class="rule-close" id="adClose">✕</button>
-      <span class="m-tag" style="background:var(--brown)">🚪 ${ja() ? "トビラ一覧" : "All Doors"}</span>
+      ${tagChip("choice", ja() ? "トビラ一覧" : "All Doors")}
       <h2>${ja() ? "19年間に、こんなトビラがあった" : "The doors of these 19 years"}</h2>
       <div class="rv-list">${secs}</div>
       <button class="m-btn" id="adOk">${ja() ? "とじる" : "Close"}</button></div>`);
@@ -748,49 +1029,49 @@ $("allDoorsBtn").onclick = showAllDoorsModal;
 
 /* ---------- あそびかた ---------- */
 const RULE_PAGES = [
-  {tag:{ja:"🌍 このゲームは",en:"🌍 This game"}, title:{ja:"世界のどこかに、生まれる",en:"Born somewhere in the world"}, items:[
-    ["🌍",{ja:"あなたは、世界のどこかの家庭に生まれます。<b>生まれる場所は、選べません</b>。",en:"You are born into a family somewhere in the world. <b>You don't choose where.</b>"}],
-    ["🎲",{ja:"サイコロも盤面も、みんなおなじ。でも、<b>見える景色</b>は人によってちがう——それがこのゲームです。",en:"Same dice, same board for everyone. But <b>what you can see</b> is different — that's this game."}],
-    ["🚪",{ja:"同じマスに止まっても、開けられるトビラ・見えるトビラがちがうかも。理由は、遊びおわってから分かります。",en:"On the same square, the doors you can open — or even see — may differ. You'll learn why after the game."}],
+  {type:"start", tag:{ja:"このゲームは",en:"This game"}, title:{ja:"世界のどこかに、生まれる",en:"Born somewhere in the world"}, items:[
+    ["globe",{ja:"あなたは、世界のどこかの家庭に生まれます。<b>生まれる場所は、選べません</b>。",en:"You are born into a family somewhere in the world. <b>You don't choose where.</b>"}],
+    ["die",{ja:"サイコロも盤面も、みんなおなじ。でも、<b>見える景色</b>は人によってちがう——それがこのゲームです。",en:"Same dice, same board for everyone. But <b>what you can see</b> is different — that's this game."}],
+    ["door",{ja:"同じマスに止まっても、開けられるトビラ・見えるトビラがちがうかも。理由は、遊びおわってから分かります。",en:"On the same square, the doors you can open — or even see — may differ. You'll learn why after the game."}],
   ]},
-  {tag:{ja:"🏁 めざすもの",en:"🏁 The goal"}, title:{ja:"順位を決めるのは ♥ハッピー",en:"Ranking is decided by ♥ Happiness"}, items:[
-    ["🎲",{ja:"これは<b>6歳から25歳までの19年間</b>をたどる人生すごろく。サイコロを回して、ゴールをめざそう。",en:"This board traces <b>19 years, from age 6 to 25</b>. Roll the dice and head for the goal."}],
-    ["🧒",{ja:"<b>子ども時代（6〜15歳）はサイコロを使わず、1マスずつ</b>進む。人生の土台をつくる時間だ。",en:"<b>In childhood (6–15) there's no dice — one square at a time.</b> These years build your base."}],
-    ["♥",{ja:"最後の順位は、おかねの多さじゃなく <b>♥ハッピーの数</b>で決まる！",en:"The final ranking isn't about money — it's the number of <b>♥ Happiness</b>!"}],
-    ["🚪",{ja:"♥は、人生の選択「<b>トビラ</b>」を開けるともらえる。<b>♥の数＝じぶんの意思で選べた数</b>だ。",en:"You earn ♥ by opening life's <b>Doors</b>. <b>♥ = how often you chose with your own will.</b>"}],
+  {type:"goal", tag:{ja:"めざすもの",en:"The goal"}, title:{ja:"順位を決めるのは ♥ハッピー",en:"Ranking is decided by ♥ Happiness"}, items:[
+    ["die",{ja:"これは<b>6歳から25歳までの19年間</b>をたどる人生すごろく。サイコロを回して、ゴールをめざそう。",en:"This board traces <b>19 years, from age 6 to 25</b>. Roll the dice and head for the goal."}],
+    ["walk",{ja:"<b>子ども時代（6〜15歳）はサイコロを使わず、1マスずつ</b>進む。人生の土台をつくる時間だ。",en:"<b>In childhood (6–15) there's no dice — one square at a time.</b> These years build your base."}],
+    ["heart",{ja:"最後の順位は、おかねの多さじゃなく <b>♥ハッピーの数</b>で決まる！",en:"The final ranking isn't about money — it's the number of <b>♥ Happiness</b>!"}],
+    ["door",{ja:"♥は、人生の選択「<b>トビラ</b>」を開けるともらえる。<b>♥の数＝じぶんの意思で選べた数</b>だ。",en:"You earn ♥ by opening life's <b>Doors</b>. <b>♥ = how often you chose with your own will.</b>"}],
   ]},
-  {tag:{ja:"🚪 トビラとカギ",en:"🚪 Doors & keys"}, title:{ja:"いい選択には「カギ」がいる",en:"Good choices need keys"}, items:[
-    ["🚪",{ja:"<b>光るトビラのマス</b>に止まると、人生の選択がやってくる。",en:"Land on a <b>glowing Door square</b> and a life choice arrives."}],
-    ["🔑",{ja:"選択肢には<b>カギ</b>（必要な💰おかね・★まなび）があるものも。",en:"Some options have <b>keys</b> — 💰money or ★learning you must have."}],
-    ["🔒",{ja:"カギが足りないと、そのトビラは開けられない…！",en:"Without the keys, that door won't open…!"}],
-    ["🗣",{ja:"えらぶ前に、<b>「なぜそれを選ぶのか」をひとこと</b>みんなに話してから決めよう。",en:"Before you choose, <b>say out loud why</b> you're choosing it."}],
+  {type:"choice", tag:{ja:"トビラとカギ",en:"Doors & keys"}, title:{ja:"いい選択には「カギ」がいる",en:"Good choices need keys"}, items:[
+    ["door",{ja:"<b>大きなトビラのマス</b>に止まると、人生の選択がやってくる。",en:"Land on a big <b>Door square</b> and a life choice arrives."}],
+    ["star",{ja:"選択肢には<b>カギ</b>（必要なおかね・★まなび）があるものも。",en:"Some options have <b>keys</b> — money or ★ learning you must have."}],
+    ["lock",{ja:"カギが足りないと、そのトビラは開けられない…！",en:"Without the keys, that door won't open…!"}],
+    ["people",{ja:"えらぶ前に、<b>「なぜそれを選ぶのか」をひとこと</b>みんなに話してから決めよう。",en:"Before you choose, <b>say out loud why</b> you're choosing it."}],
   ]},
-  {tag:{ja:"📚 まなびとおかね",en:"📚 Learning & money"}, title:{ja:"★まなびは、未来のカギ",en:"★ Learning is a future key"}, items:[
-    ["📚",{ja:"<b>まなびマス</b>やトビラ、🎴できごとで★まなびが貯まる。",en:"Collect ★ from <b>Learning squares</b>, doors, and 🎴 events."}],
-    ["💰",{ja:"かせぎは「<b>基本給＋★×掛け率</b>」。基本給も、★がかせぎになる度合いも、生まれた場所でちがう…！",en:"Pay = <b>base + ★ × rate</b>. Both base pay and how much ★ turns into pay depend on where you were born…!"}],
-    ["🎴",{ja:"<b>できごとマス</b>では、ラッキーもアクシデントも起こる。",en:"<b>Event squares</b> bring both luck and accidents."}],
+  {type:"learn", tag:{ja:"まなびとおかね",en:"Learning & money"}, title:{ja:"★まなびは、未来のカギ",en:"★ Learning is a future key"}, items:[
+    ["book",{ja:"<b>まなびマス</b>やトビラ、できごとで★まなびが貯まる。",en:"Collect ★ from <b>Learning squares</b>, doors, and events."}],
+    ["coin",{ja:"かせぎは「<b>基本給＋★×掛け率</b>」。基本給も、★がかせぎになる度合いも、生まれた場所でちがう…！",en:"Pay = <b>base + ★ × rate</b>. Both base pay and how much ★ turns into pay depend on where you were born…!"}],
+    ["bolt",{ja:"<b>できごとマス</b>では、ラッキーもアクシデントも起こる。",en:"<b>Event squares</b> bring both luck and accidents."}],
   ]},
-  {tag:{ja:"🏠 家庭カード",en:"🏠 Family Cards"}, title:{ja:"スタート地点は、国によってちがう",en:"Your start depends on where you're born"}, items:[
-    ["🏠",{ja:"はじめに引く<b>家庭カード</b>で、生まれる国・持ちもの・基本給が変わる。",en:"The <b>Family Card</b> you draw sets your country, belongings, and base pay."}],
-    ["👁",{ja:"とちゅうで「？？？」の選択肢に出会うかも。それが何なのかは——遊びおわってからのお楽しみ。",en:"You may meet ？？？ options along the way. What they are — you'll find out after the game."}],
-    ["🗣",{ja:"全員ゴールしたら<b>ふりかえりタイム</b>。感じたことを話してみよう。",en:"When everyone finishes: <b>reflection time</b>. Talk about what you felt."}],
+  {type:"fam", tag:{ja:"家庭カード",en:"Family Cards"}, title:{ja:"スタート地点は、国によってちがう",en:"Your start depends on where you're born"}, items:[
+    ["home",{ja:"はじめに引く<b>家庭カード</b>で、生まれる国・持ちもの・基本給が変わる。",en:"The <b>Family Card</b> you draw sets your country, belongings, and base pay."}],
+    ["eye",{ja:"とちゅうで「？？？」の選択肢に出会うかも。それが何なのかは——遊びおわってからのお楽しみ。",en:"You may meet ？？？ options along the way. What they are — you'll find out after the game."}],
+    ["people",{ja:"全員ゴールしたら<b>ふりかえりタイム</b>。感じたことを話してみよう。",en:"When everyone finishes: <b>reflection time</b>. Talk about what you felt."}],
   ]},
-  {tag:{ja:"🇺🇬 なぜウガンダ？",en:"🇺🇬 Why Uganda?"}, title:{ja:"実在する場所と、実在する支え",en:"A real place, and real support"}, items:[
-    ["🗺",{ja:"このゲームの舞台のひとつ、ウガンダは実在の国。病気や紛争で親を亡くした子どもたちが、たくさん暮らしています。",en:"Uganda, one of this game's settings, is a real country — home to many children who lost parents to illness or conflict."}],
-    ["🎗",{ja:"あしなが育英会は<b>「あしながウガンダ」</b>で、現地の遺児の教育を実際に支えています。ゲームに出てくる「支援団体」のモデルです。",en:"The Ashinaga Foundation really supports orphans' education there through <b>Ashinaga Uganda</b> — the model for the \"aid groups\" in this game."}],
-    ["🎓",{ja:"あしながの<b>AAI</b>は、アフリカの遺児を海外の大学へ送り出す奨学金。ただの援助ではなく、<b>志をもって祖国に貢献するリーダーを育てる「約束」</b>の仕組みです。",en:"Ashinaga's <b>AAI</b> sends African orphans to universities abroad — not simple charity, but a \"promise\": raising <b>leaders who bring their talents home</b>."}],
-    ["🤝",{ja:"ゲームの中で見えた「支え」は、現実の世界にもある。ふりかえりで、日本にいる私たちにできることを話してみよう。",en:"The support you saw in the game exists in the real world too. In reflection time, talk about what we can do."}],
+  {type:"heavy", tag:{ja:"なぜウガンダ？",en:"Why Uganda?"}, title:{ja:"実在する場所と、実在する支え",en:"A real place, and real support"}, items:[
+    ["globe",{ja:"このゲームの舞台のひとつ、ウガンダは実在の国。病気や紛争で親を亡くした子どもたちが、たくさん暮らしています。",en:"Uganda, one of this game's settings, is a real country — home to many children who lost parents to illness or conflict."}],
+    ["spark",{ja:"あしなが育英会は<b>「あしながウガンダ」</b>で、現地の遺児の教育を実際に支えています。ゲームに出てくる「支援団体」のモデルです。",en:"The Ashinaga Foundation really supports orphans' education there through <b>Ashinaga Uganda</b> — the model for the \"aid groups\" in this game."}],
+    ["cap",{ja:"あしながの<b>AAI</b>は、アフリカの遺児を海外の大学へ送り出す奨学金。ただの援助ではなく、<b>志をもって祖国に貢献するリーダーを育てる「約束」</b>の仕組みです。",en:"Ashinaga's <b>AAI</b> sends African orphans to universities abroad — not simple charity, but a \"promise\": raising <b>leaders who bring their talents home</b>."}],
+    ["people",{ja:"ゲームの中で見えた「支え」は、現実の世界にもある。ふりかえりで、日本にいる私たちにできることを話してみよう。",en:"The support you saw in the game exists in the real world too. In reflection time, talk about what we can do."}],
   ]},
 ];
 function renderRules(page) {
   const pg = RULE_PAGES[page];
-  const items = pg.items.map(([ic, tx]) => `<div class="rule-item"><span class="r-ic">${ic}</span><span>${L(tx)}</span></div>`).join("");
+  const items = pg.items.map(([icon, tx]) => `<div class="rule-item"><span class="r-ic">${ic(icon)}</span><span>${L(tx)}</span></div>`).join("");
   const dots = RULE_PAGES.map((_, i) => `<span class="${i === page ? "on" : ""}"></span>`).join("");
   const last = page === RULE_PAGES.length - 1;
   lastKey = "rules" + page;
   openModal(`<div class="rule-page">
       <button class="rule-close" id="ruleClose">✕</button>
-      <span class="m-tag" style="background:var(--teal)">${L(pg.tag)}</span>
+      ${tagChip(pg.type, L(pg.tag))}
       <h2>${L(pg.title)}</h2>
       <div class="rule-list">${items}</div>
       <div class="rule-dots">${dots}</div>
@@ -822,4 +1103,5 @@ window.__tobira = {
 $("nameInput").value = localStorage.getItem("tobira-name") || "";
 const urlCode = new URLSearchParams(location.search).get("room");
 if (urlCode) $("codeInput").value = urlCode.toUpperCase();
+diceFace(3);
 applyLang();

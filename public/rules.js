@@ -2,24 +2,34 @@
    サーバー(Durable Object)とブラウザの両方から読み込む。DOMに触れない純粋なデータとロジックだけを置く。
    ゲームバランス・文言は1画面版(door-world-game)と同一に保つこと。 ===== */
 
-const PCOLORS = ["#78BE21","#FF6858","#FFC04B","#00A3BD","#B58BD9","#F291B5"];
+/* プレイヤーの色。キャラ(CHARS)と同じ順番で対応させる */
+const PCOLORS = ["#F4879F","#6FA9DD","#A98BD9","#6FC49B"];
+/* マスの見た目。icon はアプリ側で描いたSVGのid、fill=面、ink=文字、chip=見出しの帯 */
 const TYPE_META = {
-  start:{label:{ja:"スタート",en:"Start"}, ic:"🌱", tag:"#78BE21"},
-  goal:{label:{ja:"ゴール",en:"Goal"}, ic:"🏁", tag:"#4A3A30"},
-  income:{label:{ja:"おしごと",en:"Work"}, ic:"💰", tag:"#78BE21"},
-  cost:{label:{ja:"しゅっぴ",en:"Expense"}, ic:"💸", tag:"#FF6858"},
-  event:{label:{ja:"できごと",en:"Event"}, ic:"⚡", tag:"#FFC04B"},
-  learn:{label:{ja:"まなび",en:"Learning"}, ic:"📚", tag:"#00A3BD"},
-  choice:{label:{ja:"トビラ",en:"Door"}, ic:"🚪", tag:"#4A3A30"},
-  heavy:{label:{ja:"できごと",en:"Event"}, ic:"⚠️", tag:"#4A3A30"},
-  fam:{label:{ja:"家庭カード",en:"Family Card"}, ic:"🏠", tag:"#00A3BD"},
+  start:{label:{ja:"スタート",en:"Start"}, icon:"start", fill:"#F4879F", ink:"#FFFFFF", chip:"#F4879F"},
+  goal:{label:{ja:"ゴール",en:"Goal"}, icon:"goal", fill:"#FBD96B", ink:"#7A6320", chip:"#E0AE28"},
+  income:{label:{ja:"おしごと",en:"Work"}, icon:"coin", fill:"#FCE7A6", ink:"#6B5720", chip:"#D9A32B"},
+  cost:{label:{ja:"しゅっぴ",en:"Expense"}, icon:"cost", fill:"#F9C9C9", ink:"#8E4A4A", chip:"#D9737B"},
+  event:{label:{ja:"できごと",en:"Event"}, icon:"bolt", fill:"#DCD3F5", ink:"#54487A", chip:"#8878C4"},
+  learn:{label:{ja:"まなび",en:"Learning"}, icon:"book", fill:"#C6E3F7", ink:"#2F5E80", chip:"#4E8FC0"},
+  choice:{label:{ja:"トビラ",en:"Door"}, icon:"door", fill:"#F7A9C4", ink:"#FFFFFF", chip:"#E4708F"},
+  heavy:{label:{ja:"できごと",en:"Event"}, icon:"bolt", fill:"#E7D6C6", ink:"#6B5442", chip:"#B08968"},
+  fam:{label:{ja:"家庭カード",en:"Family Card"}, icon:"home", fill:"#E9A87C", ink:"#FFFFFF", chip:"#D98E63"},
 };
+
+/* 生まれた場所ごとの家庭カードの色帯 */
+const FAM_TONE = {
+  "欧米":["#8FB8E0","#6E9BCC"], "日本":["#F2A0BC","#E4809F"],
+  "ウガンダ":["#E9A87C","#D98E63"], "ウガンダ（駐在）":["#9ECFC4","#79B3A6"],
+};
+
+/* プレイヤーに割りあてるキャラ（家庭カードとは無関係。ランダムに配る） */
+const CHARS = ["p1","p2","p3","p4"];
 
 /* 家庭カード(6種) hide: shien=支援・奨学金 / chiiki=支え合い / career=しごと / global=海外 */
 const FAMILIES = [
   {id:"w1", name:{ja:"欧米に生まれた家庭",en:"A family in a Western country"}, region:{ja:"欧米",en:"a Western country"}, rural:false, money:150, allow:10, wage:20,
    hide:["chiiki"], perk:"eigo",
-   daily:{ja:"約8,000円",en:"about ¥8,000"}, dailyNote:"",
    asa:{ja:"スクールバスで10分。朝食はシリアルとオレンジジュース。",en:"A 10-minute school bus ride. Cereal and orange juice for breakfast."},
    story:{ja:"学校に行くのは「当たり前」。図書館もネットも、ぜんぶそろっている。ただ、となりの家の人の名前は、じつは知らない。",
           en:"Going to school is just \"normal\". Libraries, internet — it's all there. But honestly, you don't know your neighbor's name."},
@@ -27,7 +37,6 @@ const FAMILIES = [
              en:"Native English: study-abroad doors need 2 fewer ★"}},
   {id:"w2", name:{ja:"日本に生まれた家庭",en:"A family in Japan"}, region:{ja:"日本",en:"Japan"}, rural:false, money:120, allow:5, wage:20,
    hide:["chiiki","shien"], perk:"kinben",
-   daily:{ja:"約6,000円",en:"about ¥6,000"}, dailyNote:"",
    asa:{ja:"7時に起きて、電車で20分。コンビニに寄る余裕もある。",en:"Up at 7, a 20-minute train ride — with time to stop at a convenience store."},
    story:{ja:"教科書は無料で、学校には給食もある。塾にも通わせてもらった。「支援」や「奨学金」は、自分には関係ない言葉だと思っていた。",
           en:"Textbooks are free and school serves lunch. Your parents even paid for cram school. \"Aid\" and \"scholarships\" felt like words for somebody else."},
@@ -35,7 +44,6 @@ const FAMILIES = [
              en:"Steady learner: start with Learn +1 / self-study works better"}},
   {id:"w3", name:{ja:"ウガンダの、両親がそろっている家庭",en:"A Ugandan family with both parents"}, region:{ja:"ウガンダ",en:"Uganda"}, rural:true, money:40, allow:0, wage:10,
    hide:["shien","career","global"], perk:"tasukeai",
-   daily:{ja:"約400円",en:"about ¥400"}, dailyNote:{ja:"学費を払う月は、ここからさらに減る",en:"school-fee months leave even less"},
    asa:{ja:"5時起き。水くみに1時間、畑を手伝ってから、5km歩いて学校へ。",en:"Up at 5. An hour fetching water, helping in the field, then a 5 km walk to school."},
    story:{ja:"学費を払う月はたいへんだ。でも困ったときは、村のみんなが助けてくれる。",
           en:"School-fee months are hard. But when trouble comes, the whole village helps out."},
@@ -43,7 +51,6 @@ const FAMILIES = [
              en:"Community: information events count double"}},
   {id:"w4", name:{ja:"外交官としてウガンダに駐在する家庭",en:"A diplomat family posted to Uganda"}, region:{ja:"ウガンダ（駐在）",en:"Uganda (expat)"}, rural:false, money:150, allow:10, wage:20,
    hide:["chiiki"], perk:"kokusai",
-   daily:{ja:"約8,000円",en:"about ¥8,000"}, dailyNote:{ja:"ただし、門の外の暮らしはちがう",en:"though life outside the gate is different"},
    asa:{ja:"運転手つきの車で外国人学校へ。窓の外には、歩いて登校する子どもたち。",en:"A chauffeured car to international school. Outside the window, kids walking to school."},
    story:{ja:"インターナショナルスクールに通い、長期休みには帰国する。車の窓から見える市場の暮らしを、じつはまだ、よく知らない。",
           en:"You go to an international school and fly home for the holidays. The market life outside the car window — you don't really know it yet."},
@@ -51,7 +58,6 @@ const FAMILIES = [
              en:"Global sense: start with Learn +1 / study-abroad doors cost −¥500k"}},
   {id:"w5", name:{ja:"支援と出会えた、ウガンダの遺児の家庭",en:"A Ugandan orphan family — already met support"}, region:{ja:"ウガンダ",en:"Uganda"}, rural:true, money:20, allow:0, wage:10,
    hide:["career","global"], perk:"shienPro",
-   daily:{ja:"約250円",en:"about ¥250"}, dailyNote:{ja:"世界の貧困ライン・1日約300円を下回る",en:"below the global poverty line of about ¥300/day"},
    asa:{ja:"5時起き。水くみと弟の世話、母の畑を手伝ってから、6km歩いて学校へ。",en:"Up at 5. Water, your little brother, your mother's field — then a 6 km walk to school."},
    story:{ja:"小さいころ、父を病気で亡くした。母と畑を守りながら学校に通う。そのとき出会った遺児支援の団体で、「支えてくれる仕組みと人」を誰よりも早く知った。",
           en:"You lost your father to illness when you were small. You keep up school while helping your mother with the field. The orphan-support group you met taught you, earlier than anyone, that help exists."},
@@ -59,7 +65,6 @@ const FAMILIES = [
              en:"Knows support: all aid/scholarship options are visible / first use gives Learn +1"}},
   {id:"w6", name:{ja:"まだ支援と出会えていない、ウガンダの遺児の家庭",en:"A Ugandan orphan family — not yet met support"}, region:{ja:"ウガンダ",en:"Uganda"}, rural:true, money:20, allow:0, wage:10,
    hide:["shien","career","global"], perk:"deai",
-   daily:{ja:"約250円",en:"about ¥250"}, dailyNote:{ja:"世界の貧困ライン・1日約300円を下回る",en:"below the global poverty line of about ¥300/day"},
    asa:{ja:"5時起き。水くみと弟の世話、母の畑を手伝ってから、6km歩いて学校へ。",en:"Up at 5. Water, your little brother, your mother's field — then a 6 km walk to school."},
    story:{ja:"小さいころ、父を病気で亡くした。母と畑を守りながら学校に通う。支えてくれる仕組みが世界にあることを、まだ誰も教えてくれていない。",
           en:"You lost your father to illness when you were small. You keep up school while helping your mother with the field. Nobody has told you yet that, somewhere in the world, there is help."},
@@ -76,10 +81,10 @@ const AGES = [
 ];
 /* 盤面の行＝人生の章（1章＝6マス。PC 6列×4行／スマホ 3列×8行にきれいに収まる） */
 const CHAPTERS = [
-  {t:{ja:"🌱 子ども時代 ── 6〜16歳",en:"🌱 Childhood — age 6–16"}, note:{ja:"15歳までは1マスずつ。人生の土台の時間だ",en:"One square at a time until 15 — the years that build your base"}},
-  {t:{ja:"🏫 10代後半 ── 道がわかれはじめる",en:"🏫 Late teens — paths start to split"}},
-  {t:{ja:"💼 20代前半 ── 道を選ぶ",en:"💼 Early 20s — choosing a road"}},
-  {t:{ja:"🌅 20代なかば ── 25歳のいまへ",en:"🌅 Mid 20s — toward the life you have at 25"}},
+  {t:{ja:"子ども時代 ── 6〜16歳",en:"Childhood — age 6–16"}, note:{ja:"15歳までは1マスずつ。人生の土台の時間だ",en:"One square at a time until 15 — the years that build your base"}},
+  {t:{ja:"10代後半 ── 道がわかれはじめる",en:"Late teens — paths start to split"}},
+  {t:{ja:"20代前半 ── 道を選ぶ",en:"Early 20s — choosing a road"}},
+  {t:{ja:"20代なかば ── 25歳のいまへ",en:"Mid 20s — toward the life you have at 25"}},
 ];
 
 /* 盤面 24マス（ショート版）
@@ -87,30 +92,30 @@ const CHAPTERS = [
      3〜6枚とぶれて、1人プレイのネタバラシが薄くなるため、全員が6枚全部と出会う。
      とくに大学（AAI）は、あしなが事業そのものを表すいちばん大事な一枚。 */
 const SQUARES = [
-  {t:"start", name:{ja:"スタート",en:"Start"}},
-  {t:"income", name:{ja:"はじめてのお手伝い",en:"First chores"}, fixed:15, stop:true},
-  {t:"event", stop:true},
-  {t:"learn", stop:true},
-  {t:"choice", name:{ja:"進学",en:"School"}, key:"shinro", stop:true},
-  {t:"income", name:{ja:"おしごと",en:"Work"}},
-  {t:"event"},
-  {t:"cost", name:{ja:"学用品・制服代",en:"School supplies & uniform"}, amt:20},
-  {t:"learn"},
-  {t:"choice", name:{ja:"くらし",en:"Home life"}, key:"kurashi", stop:true},
-  {t:"income", name:{ja:"おしごと",en:"Work"}},
-  {t:"choice", name:{ja:"大学",en:"University"}, key:"kaigai", stop:true},
-  {t:"cost", name:{ja:"急な病気の医療費",en:"Sudden medical bill"}, amt:30},
-  {t:"choice", name:{ja:"まち",en:"Town"}, key:"machi", stop:true},
-  {t:"income", name:{ja:"おしごと",en:"Work"}},
-  {t:"learn"},
-  {t:"event"},
-  {t:"choice", name:{ja:"技術",en:"Skills"}, key:"ginou", stop:true},
-  {t:"income", name:{ja:"おしごと",en:"Work"}},
-  {t:"cost", name:{ja:"家族のための出費",en:"Family expenses"}, amt:40},
-  {t:"choice", name:{ja:"しごと",en:"Career"}, key:"shigoto", stop:true},
-  {t:"learn"},
-  {t:"income", name:{ja:"おしごと",en:"Work"}},
-  {t:"goal", name:{ja:"ゴール",en:"Goal"}},
+  {t:"start", name:{ja:"スタート",en:"Start"}, sub:{ja:"はじまり",en:"the beginning"}},
+  {t:"income", name:{ja:"はじめてのお手伝い",en:"First chores"}, fixed:15, stop:true, sub:{ja:"はじめての、じぶんのかせぎ",en:"your first earnings"}},
+  {t:"event", stop:true, sub:{ja:"なにが起きる…？",en:"what happens…?"}},
+  {t:"learn", stop:true, sub:{ja:"じぶんに投資する",en:"invest in yourself"}},
+  {t:"choice", name:{ja:"進学",en:"School"}, key:"shinro", stop:true, sub:{ja:"学校を出たあと",en:"after school"}},
+  {t:"income", name:{ja:"おしごと",en:"Work"}, sub:{ja:"はたらいて、かせぐ",en:"work and earn"}},
+  {t:"event", sub:{ja:"なにが起きる…？",en:"what happens…?"}},
+  {t:"cost", name:{ja:"学用品・制服代",en:"School supplies & uniform"}, amt:20, sub:{ja:"いるものは、いる",en:"what you need, you need"}},
+  {t:"learn", sub:{ja:"じぶんに投資する",en:"invest in yourself"}},
+  {t:"choice", name:{ja:"くらし",en:"Home life"}, key:"kurashi", stop:true, sub:{ja:"暮らしを決める",en:"deciding how to live"}},
+  {t:"income", name:{ja:"おしごと",en:"Work"}, sub:{ja:"はたらいて、かせぐ",en:"work and earn"}},
+  {t:"choice", name:{ja:"大学",en:"University"}, key:"kaigai", stop:true, sub:{ja:"進む道を選ぶ",en:"choosing your road"}},
+  {t:"cost", name:{ja:"急な病気の医療費",en:"Sudden medical bill"}, amt:30, sub:{ja:"病気は、えらべない",en:"illness doesn't choose"}},
+  {t:"choice", name:{ja:"まち",en:"Town"}, key:"machi", stop:true, sub:{ja:"どこで生きる",en:"where to live"}},
+  {t:"income", name:{ja:"おしごと",en:"Work"}, sub:{ja:"はたらいて、かせぐ",en:"work and earn"}},
+  {t:"learn", sub:{ja:"じぶんに投資する",en:"invest in yourself"}},
+  {t:"event", sub:{ja:"なにが起きる…？",en:"what happens…?"}},
+  {t:"choice", name:{ja:"技術",en:"Skills"}, key:"ginou", stop:true, sub:{ja:"手に職をつける",en:"learn a trade"}},
+  {t:"income", name:{ja:"おしごと",en:"Work"}, sub:{ja:"はたらいて、かせぐ",en:"work and earn"}},
+  {t:"cost", name:{ja:"家族のための出費",en:"Family expenses"}, amt:40, sub:{ja:"支えるほうにまわる",en:"now you do the supporting"}},
+  {t:"choice", name:{ja:"しごと",en:"Career"}, key:"shigoto", stop:true, sub:{ja:"はたらき方を選ぶ",en:"how you want to work"}},
+  {t:"learn", sub:{ja:"じぶんに投資する",en:"invest in yourself"}},
+  {t:"income", name:{ja:"おしごと",en:"Work"}, sub:{ja:"はたらいて、かせぐ",en:"work and earn"}},
+  {t:"goal", name:{ja:"ゴール",en:"Goal"}, sub:{ja:"いまのあなた",en:"you, right now"}},
 ];
 
 /* トビラ定義 tag: shien/chiiki/career/global は家庭カードによって？？？になる */
@@ -436,7 +441,7 @@ export function hideTag(p, tag){ if(!p.hidden.includes(tag)) p.hidden.push(tag);
 export function unhideTag(p, tag){ const i = p.hidden.indexOf(tag); if(i >= 0) p.hidden.splice(i,1); }
 
 export {
-  PCOLORS, TYPE_META, FAMILIES, AGES, CHAPTERS, SQUARES, EVENTS, ENDINGS,
+  PCOLORS, TYPE_META, FAM_TONE, CHARS, FAMILIES, AGES, CHAPTERS, SQUARES, EVENTS, ENDINGS,
   choiceDef, shuffle, jobTitle, revealTags, hiddenOptionCount, checkDeai, applyFx,
   effectiveMoneyReq, effectiveMoneyFx, effectiveLearnReq, meetsReq, endingText,
 };
