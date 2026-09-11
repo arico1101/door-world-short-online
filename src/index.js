@@ -123,6 +123,12 @@ export class Room {
       you: me && me.fam ? {
         fam: me.fam, hidden: me.hidden, perk: me.perk, mult: me.mult, allow: me.allow,
         loan: me.loan, aai: me.aai, shienDiscount: me.shienDiscount, seen: me.seen,
+        /* 「じぶんが何を選んだか」だけ。えらばなかった選択肢＝？？？の中身は
+           ここでも絶対に渡さない（結果発表のネタバラシまで取っておく） */
+        myChoices: (me.doorLog || []).filter(e => e.chosen != null).map(e => ({
+          age: e.age, door: e.title, variant: e.variant,
+          t: e.opts[e.chosen].t, d: e.opts[e.chosen].d, fx: e.appliedFx || e.opts[e.chosen].fx,
+        })),
       } : null,
     };
   }
@@ -251,6 +257,7 @@ export class Room {
     });
     g.heavyOn = heavyOn;
     g.deck = [];
+    g.talkDone = false;                                 /* 22歳の「みんなで話す」は1ゲームに1回 */
     g.phase = "cards";
   }
 
@@ -268,7 +275,11 @@ export class Room {
     const steps = p.pos < 4 ? 1 : 1 + Math.floor(Math.random() * 6);
     g.dice = p.pos < 4 ? null : steps;
     let target = Math.min(p.pos + steps, R.SQUARES.length - 1);
-    for (let i = p.pos + 1; i < target; i++) if (R.SQUARES[i].stop) { target = i; break; }
+    /* 「みんなで話す」マスは、いちばんに着いた人だけを止める。
+       一度おこなったあとは、ただの通り道になる（全員ぶん止めると時間が足りない） */
+    for (let i = p.pos + 1; i < target; i++) {
+      if (R.SQUARES[i].stop && !(R.SQUARES[i].t === "talk" && g.talkDone)) { target = i; break; }
+    }
     p.pos = target;
     this.resolveSquare();
   }
@@ -362,6 +373,13 @@ export class Room {
          結果発表の「出会ったトビラ」には数えない（手紙イベントと同じ扱い） */
       if (g.heavyOn && !p.hadHeavy && p.pos >= 2 && Math.random() < 0.3) { this.setChoice(R.heavyDef(p), "heavy", true); return; }
       this.drawEvent();
+    }
+    else if (sq.t === "talk") {
+      /* 2人目からは素通り。数字は一切動かさない */
+      if (g.talkDone) return this.endTurn();
+      g.talkDone = true;
+      this.setInfo("talk", R.TALK.title, R.TALK.body, {},
+        bi(R.TALK.asks.ja + "<br><br>" + R.TALK.note.ja, R.TALK.asks.en + "<br><br>" + R.TALK.note.en));
     }
     else if (sq.t === "learn") this.setChoice(R.choiceDef("learnSq", p), "learn");
     else if (sq.t === "choice") this.setChoice(R.choiceDef(sq.key, p), "choice");
@@ -475,6 +493,8 @@ export class Room {
       fx.learn = (fx.learn || 0) + 1;
       pnotes.push(bi("✨ 支援を知っている強みで まなび+1", "✨ Knowing the support system: Learn +1"));
     }
+    /* 本人が「じぶんの選択」を見返すための記録。実際にきいた効果のほうを残す */
+    if (g.logged && p.doorLog.length) p.doorLog[p.doorLog.length - 1].appliedFx = { ...fx };
     g.pending = { kind: "result", for: p.id, type: g.pending.type, title: o.t, body: o.d, notes, pnotes, fx };
   }
 

@@ -304,11 +304,12 @@ function renderBoard() {
 
   R.SQUARES.forEach((sq, i) => {
     const m = R.TYPE_META[sq.t], hw = halfW(sq.t);
-    const s0 = i * seg + 3.5, s1 = (i + 1) * seg - 3.5, M = 22, left = [], right = [];
+    const s0 = i * seg + 3.5, s1 = (i + 1) * seg - 3.5, M = 22, left = [], right = [], mid = [];
     for (let k = 0; k <= M; k++) {
       const { p, n } = at(s0 + (s1 - s0) * k / M);
       left.push([p[0] + n[0]*hw, p[1] + n[1]*hw]);
       right.push([p[0] - n[0]*hw, p[1] - n[1]*hw]);
+      mid.push(p);
     }
     const d = "M" + left.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ")
       + " L " + right.reverse().map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ") + " Z";
@@ -321,26 +322,29 @@ function renderBoard() {
       const w = [...txt].reduce((s, ch) => s + (ch.charCodeAt(0) > 0x2E80 ? 1 : 0.55), 0);
       return Math.max(9, Math.min(base, inner / Math.max(1, w)));
     };
-    const { p: c } = at((s0 + s1) / 2);
+    /* 曲がったタイルでは、道のまん中の点と「形のまん中」がずれる。
+       サンプル点の重心をとると、どのタイルでも見た目の中央に文字が来る */
+    const c = [mid.reduce((s2, q) => s2 + q[0], 0) / mid.length,
+               mid.reduce((s2, q) => s2 + q[1], 0) / mid.length];
     const big = sq.t === "choice" || sq.t === "start" || sq.t === "goal";
-    gLabels.appendChild(tileIcon(sq.t, c[0], c[1] - (big ? 30 : 26), m.chip));
     const tTxt = L(sq.name) || L(m.label);
-    const title = el("text", { x: c[0], y: c[1] + (big ? 12 : 10), "text-anchor": "middle",
+    /* 年齢はトビラ・スタート・ゴールだけ。せまい画面では説明文は出さない */
+    const sTxt = (big || lay.sub)
+      ? (big ? (ja() ? `${R.AGES[i]}歳` : `Age ${R.AGES[i]}`) + (L(sq.sub) ? "・" + L(sq.sub) : "") : (L(sq.sub) || ""))
+      : "";
+    /* アイコン＋見出し＋説明のかたまりを、上下おなじ余白で置く */
+    const dy = sTxt ? 5 : 14;
+    gLabels.appendChild(tileIcon(sq.t, c[0], c[1] - (big ? 30 : 26) + dy, m.chip));
+    const title = el("text", { x: c[0], y: c[1] + (big ? 12 : 10) + dy, "text-anchor": "middle",
       "font-size": fit(tTxt, big ? lay.fsBig : lay.fsSmall), "font-weight": 900, fill: m.ink });
     title.textContent = tTxt;
     gLabels.appendChild(title);
-    /* 年齢はトビラ・スタート・ゴールだけ。せまい画面では説明文は出さない */
-    if (big || lay.sub) {
-      const sTxt = big
-        ? (ja() ? `${R.AGES[i]}歳` : `Age ${R.AGES[i]}`) + (L(sq.sub) ? "・" + L(sq.sub) : "")
-        : (L(sq.sub) || "");
-      if (sTxt) {
-        const sub = el("text", { x: c[0], y: c[1] + (big ? 32 : 28), "text-anchor": "middle",
-          "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5), "font-weight": 700,
-          fill: big ? m.ink : "#6E7E8C", opacity: big ? .92 : 1 });
-        sub.textContent = sTxt;
-        gLabels.appendChild(sub);
-      }
+    if (sTxt) {
+      const sub = el("text", { x: c[0], y: c[1] + (big ? 32 : 28) + dy, "text-anchor": "middle",
+        "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5), "font-weight": 700,
+        fill: big ? m.ink : "#6E7E8C", opacity: big ? .92 : 1 });
+      sub.textContent = sTxt;
+      gLabels.appendChild(sub);
     }
   });
 
@@ -614,16 +618,20 @@ function renderPending() {
   const type = pd.type === "heavy" ? "heavy" : (["learn", "event", "income", "cost"].includes(pd.type) ? pd.type : "choice");
 
   if (pd.kind === "info") {
-    openModal(`<div class="m-head">${mine ? "" : watchHead(actor)}
+    /* 「みんなで話す」マスだけは観戦ではなく、全員が同じ画面を見て話す時間 */
+    const talk = pd.type === "talk";
+    openModal(`<div class="m-head">${mine || talk ? "" : watchHead(actor)}
         ${tagChip(pd.type === "heavy" ? "heavy" : (R.TYPE_META[pd.type] ? pd.type : "event"))}
-        <h2>${L(pd.title)}</h2></div>
+        <h2>${L(pd.title)}</h2>
+        ${talk ? `<p class="m-sub">${ja() ? `${actor.name} さんが このマスに止まりました` : `${actor.name} landed here`}</p>` : ""}</div>
       <div class="m-body">
         <p class="m-lead">${L(pd.body)}</p>
-        ${pd.note ? `<div class="m-note">${L(pd.note)}</div>` : ""}
+        ${pd.note ? `<div class="m-note${talk ? " talk" : ""}">${L(pd.note)}</div>` : ""}
         ${privNote(pd.pnote)}
-        ${chgPanel(beforeOf(pd.for), pd.fx || {})}
-        ${mine ? `<button class="m-btn" id="mOk">OK</button>` : waitingNote(actor.name)}
-      </div>`, !mine);
+        ${talk ? "" : chgPanel(beforeOf(pd.for), pd.fx || {})}
+        ${mine ? `<button class="m-btn" id="mOk">${talk ? (ja() ? "話せた！ すすむ" : "We talked — continue") : "OK"}</button>`
+          : (talk ? `<div class="waiting-note">${ic("people", "s")} ${ja() ? "みんなで話してから、すすみます" : "Talk together, then continue"}</div>` : waitingNote(actor.name))}
+      </div>`, !mine && !talk);
     if (mine) $("mOk").onclick = () => { send({ t: "ok" }); };
   }
   else if (pd.kind === "result") {
@@ -712,6 +720,32 @@ function renderPending() {
   }
 }
 
+/* これまでに自分がえらんだ選択肢。
+   えらばなかった選択肢——とくに「？？？」の中身——はここにも出さない。
+   それがわかるのは、全員がゴールしたあとのネタバラシだけ。 */
+function myChoiceList() {
+  const list = (YOU && YOU.myChoices) || [];
+  if (!list.length) return "";
+  const rows = list.map(c => {
+    const fx = [];
+    if (c.fx.money) fx.push(`<span class="m1">${c.fx.money > 0 ? "+" : ""}${fm(c.fx.money)}</span>`);
+    if (c.fx.learn) fx.push(`<span class="m2">★+${c.fx.learn}</span>`);
+    if (c.fx.happy) fx.push(`<span class="m3">♥+${c.fx.happy}</span>`);
+    return `<div class="mc-row">
+      <span class="mc-age">${fage(c.age)}</span>
+      <span class="mc-main"><span class="mc-door">${L(c.door)}</span>
+        <span class="mc-t">${L(c.t)}</span>
+        ${fx.length ? `<span class="mc-fx">${fx.join("")}</span>` : ""}</span></div>`;
+  }).join("");
+  return `<div class="fam-mine">
+    <div class="k">${ic("check", "s")} ${ja() ? `あなたがえらんできたこと（${list.length}件）` : `What you have chosen so far (${list.length})`}</div>
+    <div class="mc-list">${rows}</div>
+    <div class="mc-note">${ja()
+      ? "えらばなかった選択肢は、ここには出ません。ぜんぶ見られるのは、全員がゴールしたあとです。"
+      : "The options you didn't take aren't shown here — you'll see them all once everyone finishes."}</div>
+  </div>`;
+}
+
 /* ---------- 家庭カード（自分のぶんだけ） ---------- */
 function showCard(review) {
   if (!YOU) return;
@@ -749,6 +783,7 @@ function showCard(review) {
       ${hiddenN > 0 ? `<div class="fam-hid">${ic("eye", "s")}<span>${ja()
         ? `このさき、<b>${hiddenN}個</b>の選択肢は「？？？」としか見えません。`
         : `<b>${hiddenN}</b> options ahead will show only as ？？？.`}</span></div>` : ""}
+      ${myChoiceList()}
       <div class="fam-secret">${ic("lock", "s")} ${ja() ? "このカードは、あなたの端末にしか表示されません。" : "This card is shown only on your device."}</div>
       <button class="m-btn" id="mCard">${review ? (ja() ? "とじる" : "Close") : (ja() ? "OK、覚えた" : "Got it")}</button>
     </div>`);
@@ -1039,6 +1074,7 @@ const RULE_PAGES = [
     ["walk",{ja:"<b>子ども時代（6〜15歳）はサイコロを使わず、1マスずつ</b>進む。人生の土台をつくる時間だ。",en:"<b>In childhood (6–15) there's no dice — one square at a time.</b> These years build your base."}],
     ["heart",{ja:"最後の順位は、おかねの多さじゃなく <b>♥ハッピーの数</b>で決まる！",en:"The final ranking isn't about money — it's the number of <b>♥ Happiness</b>!"}],
     ["door",{ja:"♥は、人生の選択「<b>トビラ</b>」を開けるともらえる。<b>♥の数＝じぶんの意思で選べた数</b>だ。",en:"You earn ♥ by opening life's <b>Doors</b>. <b>♥ = how often you chose with your own will.</b>"}],
+    ["people",{ja:"22歳に<b>「みんなで話す」マス</b>がひとつ。いちばんに着いた人が止まり、<b>全員でいまの状況と、選んだ理由</b>を話す。ほかの人はそこを通りすぎる。",en:"At age 22 there's one <b>Talk Together square</b>. The first to arrive stops and <b>everyone talks</b> about where they are and why they chose what they chose. The rest walk past."}],
   ]},
   {type:"choice", tag:{ja:"トビラとカギ",en:"Doors & keys"}, title:{ja:"いい選択には「カギ」がいる",en:"Good choices need keys"}, items:[
     ["door",{ja:"<b>大きなトビラのマス</b>に止まると、人生の選択がやってくる。",en:"Land on a big <b>Door square</b> and a life choice arrives."}],

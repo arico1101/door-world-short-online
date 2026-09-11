@@ -13,6 +13,7 @@ const TYPE_META = {
   event:{label:{ja:"できごと",en:"Event"}, icon:"bolt", fill:"#DCD3F5", ink:"#54487A", chip:"#8878C4"},
   learn:{label:{ja:"まなび",en:"Learning"}, icon:"book", fill:"#C6E3F7", ink:"#2F5E80", chip:"#4E8FC0"},
   choice:{label:{ja:"トビラ",en:"Door"}, icon:"door", fill:"#F7A9C4", ink:"#FFFFFF", chip:"#E4708F"},
+  talk:{label:{ja:"はなしあい",en:"Talk"}, icon:"people", fill:"#CDEBDD", ink:"#2F6B52", chip:"#5FA882"},
   heavy:{label:{ja:"できごと",en:"Event"}, icon:"bolt", fill:"#E7D6C6", ink:"#6B5442", chip:"#B08968"},
   fam:{label:{ja:"家庭カード",en:"Family Card"}, icon:"home", fill:"#E9A87C", ink:"#FFFFFF", chip:"#D98E63"},
 };
@@ -80,6 +81,25 @@ const AGES = [
   23,24,24,25,25,25,
 ];
 /* 盤面の行＝人生の章（1章＝6マス。PC 6列×4行／スマホ 3列×8行にきれいに収まる） */
+/* 22歳の「みんなで話す」マス。
+   最初にここへ来た人だけが止まり、そのあとの人は通りすぎる（全員ぶん止まると時間が足りない）。
+   数字は動かさない——盤面をいちど止めて、顔を上げるためだけのマス。 */
+const TALK = {
+  title:{ja:"サイコロを置いて、話してみよう",en:"Put down the dice, and talk"},
+  body:{ja:"22歳。ここまでの道のりは、たぶん人によってずいぶん違う。<br>おかねも、まなびも、通ってきた扉も。",
+        en:"Age 22. By now your roads have probably diverged — money, learning, the doors you walked through."},
+  asks:{ja:"・いま何歳で、何をしている？　おかね・まなび・ハッピーはいくつ？<br>"
+          + "・進学した人、働いた人——<b>なぜ、その扉を選んだ？</b><br>"
+          + "・開けたかったのに開けられなかった扉はあった？　何が足りなかった？<br>"
+          + "・ほかの人の話を聞いて、「自分にはなかったな」と思ったものは？",
+        en:"· How old are you, and what are you doing? How much money, learning, happiness?<br>"
+          + "· Those who studied on, those who went to work — <b>why did you choose that door?</b><br>"
+          + "· Was there a door you wanted but couldn't open? What was missing?<br>"
+          + "· Listening to the others, what did you realise you never had?"},
+  note:{ja:"<small>話し終わったら、止まった人がOKを押してください。<br>このマスに止まるのは、いちばんに着いた人だけ。ほかの人は通りすぎます。</small>",
+        en:"<small>When you're done, whoever landed here presses OK.<br>Only the first to arrive stops here — everyone else walks past.</small>"},
+};
+
 const CHAPTERS = [
   {t:{ja:"子ども時代 ── 6〜16歳",en:"Childhood — age 6–16"}, note:{ja:"15歳までは1マスずつ。人生の土台の時間だ",en:"One square at a time until 15 — the years that build your base"}},
   {t:{ja:"10代後半 ── 道がわかれはじめる",en:"Late teens — paths start to split"}},
@@ -108,7 +128,7 @@ const SQUARES = [
   {t:"choice", name:{ja:"まち",en:"Town"}, key:"machi", stop:true, sub:{ja:"どこで生きる",en:"where to live"}},
   {t:"income", name:{ja:"おしごと",en:"Work"}, sub:{ja:"はたらいて、かせぐ",en:"work and earn"}},
   {t:"learn", sub:{ja:"じぶんに投資する",en:"invest in yourself"}},
-  {t:"event", sub:{ja:"なにが起きる…？",en:"what happens…?"}},
+  {t:"talk", name:{ja:"みんなで話す",en:"Talk together"}, stop:true, sub:{ja:"いちど顔を上げる",en:"look up from the board"}},
   {t:"choice", name:{ja:"技術",en:"Skills"}, key:"ginou", stop:true, sub:{ja:"手に職をつける",en:"learn a trade"}},
   {t:"income", name:{ja:"おしごと",en:"Work"}, sub:{ja:"はたらいて、かせぐ",en:"work and earn"}},
   {t:"cost", name:{ja:"家族のための出費",en:"Family expenses"}, amt:40, sub:{ja:"支えるほうにまわる",en:"now you do the supporting"}},
@@ -441,7 +461,7 @@ export function hideTag(p, tag){ if(!p.hidden.includes(tag)) p.hidden.push(tag);
 export function unhideTag(p, tag){ const i = p.hidden.indexOf(tag); if(i >= 0) p.hidden.splice(i,1); }
 
 export {
-  PCOLORS, TYPE_META, FAM_TONE, CHARS, FAMILIES, AGES, CHAPTERS, SQUARES, EVENTS, ENDINGS,
+  PCOLORS, TYPE_META, FAM_TONE, CHARS, FAMILIES, AGES, CHAPTERS, SQUARES, TALK, EVENTS, ENDINGS,
   choiceDef, shuffle, jobTitle, revealTags, hiddenOptionCount, checkDeai, applyFx,
   effectiveMoneyReq, effectiveMoneyFx, effectiveLearnReq, meetsReq, endingText,
 };

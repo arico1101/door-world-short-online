@@ -209,7 +209,9 @@ async function playAndCheck(games) {
       }
     }
     cs.forEach(c => c.close());
-    if (loanSeen && n >= 2) break;                     /* 3ゲーム回して貸与型も見られたら十分 */
+    /* 貸与型とAAIの「開いた例」の両方を見られたら十分。
+       w6 は支援に出会うまでAAIが？？？なので、少ないゲーム数だと開いた例が1件も出ないことがある */
+    if (loanSeen && aaiOpen && n >= 2) break;
   }
   if (!orphans) throw new Error("遺児家庭が1人も配られなかった（テストが成立していない）");
   ok(`遺児家庭 ${orphans}人ぶん：全員の19歳にAAIのトビラが出た（うち ${aaiOpen}人はカギが足りていた）`);
@@ -222,10 +224,77 @@ async function playAndCheck(games) {
   ok(`大学に行けた ${univSeen}人ぶん：24歳の大学院が開いた（うちカギ★6も足りていた ${gradOpen}人）／行けなかった人には🔒で見えている`);
 }
 
+/* ============ 6. 話し合うマスと、じぶんの選択の記録 ============ */
+async function talkAndMyChoicesTest() {
+  console.log("[6] 22歳の「みんなで話す」マスと、本人だけが見られる選択の記録");
+  let talkGames = 0;
+  for (let round = 0; round < 4; round++) {
+    const rm = room();
+    const cs = await joinAll(rm, 4);
+    /* 話し合いが何回起きたか・だれの番だったかを、立ちあがりの瞬間だけ数える */
+    let talks = 0, talkAt = null, wasTalk = false, sharedBody = 0;
+    cs.forEach((c, i) => {
+      c.watch = cc => {
+        const pd = cc.g && cc.g.pending;
+        const isTalk = !!(pd && pd.type === "talk");
+        if (isTalk && i === 0 && !wasTalk) {
+          talks++;
+          const me = cc.g.players.find(p => p.id === pd.for);
+          talkAt = me ? me.pos : null;
+        }
+        if (isTalk && i === 0) wasTalk = true; else if (i === 0) wasTalk = false;
+        /* 止まった本人でなくても、話し合いのお題が届いていること */
+        if (isTalk && pd.for !== cc.pid && pd.note && pd.body) sharedBody++;
+      };
+    });
+    cs[0].send({ t: "start", heavyOn: true });
+    await waitFor(cs[0], g => g.phase === "cards", "配りはじめ");
+    cs.forEach(c => c.send({ t: "seen" }));
+    await waitFor(cs[0], g => g.phase === "play", "プレイ開始");
+    cs.forEach(c => { c.auto = autoPlay(rand); c.auto(c); });
+    await waitFor(cs[0], g => g.phase === "result", "結果発表", 60000);
+    cs.forEach(c => c.auto = null);
+
+    if (talks !== 1) throw new Error(`話し合いマスが1ゲームに ${talks} 回起きた（1回でなければならない）`);
+    if (talkAt !== 16) throw new Error(`話し合いマスで止まった位置が ${talkAt}（16マス目のはず）`);
+    if (!sharedBody) throw new Error("止まった人以外に、話し合いのお題が届いていない");
+    talkGames++;
+
+    /* じぶんの選択の記録：えらんだものと一致し、えらばなかったものは1件も入っていない */
+    for (const c of cs) {
+      const pub = c.g.players.find(p => p.id === c.pid);
+      const chosen = (pub.doorLog || []).filter(e => e.chosen != null);
+      const mine = (c.you && c.you.myChoices) || [];
+      if (mine.length !== chosen.length)
+        throw new Error(`${c.name}: 記録が ${mine.length}件、実際にえらんだのは ${chosen.length}件`);
+      chosen.forEach((e, k) => {
+        const want = e.opts[e.chosen].t.ja;
+        if (mine[k].t.ja !== want)
+          throw new Error(`${c.name}: ${k + 1}件目が「${mine[k].t.ja}」、えらんだのは「${want}」`);
+      });
+      /* ネタバレ検査：一度もえらんでいない選択肢の文言が、本人あてのデータに出てこないこと。
+         まなびのトビラのように同じ選択肢が何度も出るので、「えらんだ文言」は除いて見る */
+      const leaked = [];
+      const blob = JSON.stringify(c.you);
+      const picked = new Set(chosen.map(e => e.opts[e.chosen].t.ja));
+      (pub.doorLog || []).forEach(e => e.opts.forEach(o => {
+        if (picked.has(o.t.ja)) return;
+        if (blob.includes(o.t.ja)) leaked.push(o.t.ja);
+      }));
+      if (leaked.length)
+        throw new Error(`${c.name}: えらんでいない選択肢が本人に届いていた [${leaked.join("、")}]`);
+    }
+    cs.forEach(c => c.close());
+  }
+  ok(`4人 × ${talkGames}ゲーム：話し合いマスはちょうど1回・16マス目で起き、ほかの人は通りすぎる`);
+  ok(`4人 × ${talkGames}ゲーム：じぶんの選択の記録はえらんだものと一致し、？？？の中身はもれていない`);
+}
+
 try {
   await dealTest();
   await soloTest();
   await playAndCheck(8);
+  await talkAndMyChoicesTest();
   console.log(`\nOK — ${passed} checks passed`);
   process.exit(0);
 } catch (e) {
