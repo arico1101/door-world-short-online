@@ -153,13 +153,13 @@ const mqMobile = window.matchMedia("(max-width:700px)");
 const LAY_WIDE = {
   vb: [1160, 800], corner: 72,
   pts: [[124,272],[1036,272],[1036,422],[124,422],[124,572],[1036,572],[1036,712],[124,712]],
-  chapY: [190, 347, 497, 645], sub: true, tokenW: 48, tokenH: 62, fsBig: 19, fsSmall: 15,
+  sub: true, tokenW: 48, tokenH: 62, fsBig: 19, fsSmall: 15,
 };
 const LAY_TALL = {
   vb: [560, 1660], corner: 70,
   pts: [[92,150],[468,150],[468,340],[92,340],[92,530],[468,530],[468,720],[92,720],
         [92,910],[468,910],[468,1100],[92,1100],[92,1290],[468,1290],[468,1480],[92,1480]],
-  chapY: [62, 435, 815, 1195], sub: false, tokenW: 46, tokenH: 58, fsBig: 21, fsSmall: 18,
+  sub: false, tokenW: 46, tokenH: 58, fsBig: 21, fsSmall: 18,
 };
 const HALFW = { choice: 66, start: 62, goal: 62 };
 const halfW = t => HALFW[t] || 52;
@@ -259,6 +259,49 @@ function drawScenery(svg, lay) {
   svg.appendChild(g);
 }
 
+/* 多角形の面積重心。つぶれた形のときは、道のまん中の平均で代用する */
+function polyCenter(poly, fallback) {
+  let a = 0, cx = 0, cy = 0;
+  for (let k = 0; k < poly.length; k++) {
+    const [x0, y0] = poly[k], [x1, y1] = poly[(k + 1) % poly.length];
+    const f = x0 * y1 - x1 * y0;
+    a += f; cx += (x0 + x1) * f; cy += (y0 + y1) * f;
+  }
+  if (Math.abs(a) < 1e-6) return [fallback.reduce((s, q) => s + q[0], 0) / fallback.length,
+                                  fallback.reduce((s, q) => s + q[1], 0) / fallback.length];
+  return [cx / (3 * a), cy / (3 * a)];
+}
+
+/* 高さ y のところで、その形が横に何ひろがっているか。
+   角のタイルは場所によって幅がちがうので、文字を入れる前にここで測る */
+function widthAtY(poly, y, xc) {
+  const xs = [];
+  for (let k = 0; k < poly.length; k++) {
+    const [x0, y0] = poly[k], [x1, y1] = poly[(k + 1) % poly.length];
+    if ((y0 <= y && y1 > y) || (y1 <= y && y0 > y)) xs.push(x0 + (x1 - x0) * (y - y0) / (y1 - y0));
+  }
+  if (xs.length < 2) return 0;
+  xs.sort((a, b) => a - b);
+  let w = 0;
+  for (let k = 0; k + 1 < xs.length; k += 2) {
+    const lo = xs[k], hi = xs[k + 1];
+    if (xc < lo || xc > hi) continue;
+    /* 文字は xc を中心にならぶので、左右の狭いほうが効く */
+    w = Math.max(w, 2 * Math.min(xc - lo, hi - xc));
+  }
+  return w;
+}
+
+/* 横位置 x のところで、その形が上下どこからどこまであるか。無ければ null */
+function spanAtX(poly, x) {
+  const ys = [];
+  for (let k = 0; k < poly.length; k++) {
+    const [x0, y0] = poly[k], [x1, y1] = poly[(k + 1) % poly.length];
+    if ((x0 <= x && x1 > x) || (x1 <= x && x0 > x)) ys.push(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+  }
+  return ys.length ? [Math.min(...ys), Math.max(...ys)] : null;
+}
+
 /* マスのアイコン（盤面用・線で描く） */
 function tileIcon(type, cx, cy, c) {
   const g = el("g", { transform: `translate(${cx} ${cy})` });
@@ -301,6 +344,7 @@ function renderBoard() {
   const gTiles = el("g", {}), gLabels = el("g", {});
   svg.appendChild(gTiles); svg.appendChild(gLabels);
   const { at, seg } = geo;
+  const band = [];                                      /* 各マスの上下端。章ラベルの位置決めに使う */
 
   R.SQUARES.forEach((sq, i) => {
     const m = R.TYPE_META[sq.t], hw = halfW(sq.t);
@@ -315,17 +359,19 @@ function renderBoard() {
       + " L " + right.reverse().map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ") + " Z";
     gTiles.appendChild(el("path", { d, id: `sq-${i}`, fill: m.fill, stroke: "#FFFFFF", "stroke-width": 9, "stroke-linejoin": "round" }));
 
-    /* タイルは曲がるぶん横はばが一定でない。文字がはみ出さないよう、実幅に合わせて字を詰める */
-    const xs = left.concat(right).map(q => q[0]);
-    const inner = Math.max(46, Math.max(...xs) - Math.min(...xs) - 26);
-    const fit = (txt, base) => {
-      const w = [...txt].reduce((s, ch) => s + (ch.charCodeAt(0) > 0x2E80 ? 1 : 0.55), 0);
-      return Math.max(9, Math.min(base, inner / Math.max(1, w)));
+    const poly = left.concat(right);
+    /* 塗りつぶした形そのものの重心。曲がったタイルでも、上下左右おなじ余白で文字が入る */
+    const c = polyCenter(poly, mid);
+    /* 文字は横に並ぶので、その高さでの「形の実はば」に合わせて字を詰める。
+       まるごとの外接四角で測ると、角のタイルではみ出す */
+    const fit = (txt, base, y) => {
+      const w = [...txt].reduce((s2, ch) => s2 + (ch.charCodeAt(0) > 0x2E80 ? 1 : 0.55), 0);
+      /* 文字の高さのぶん、上・中・下の3か所で測って、いちばん狭いところに合わせる */
+      const up = base * 0.8;
+      const room = Math.max(46, Math.min(widthAtY(poly, y, c[0]),
+        widthAtY(poly, y - up / 2, c[0]), widthAtY(poly, y - up, c[0])) - 30);
+      return Math.max(9, Math.min(base, room / Math.max(1, w)));
     };
-    /* 曲がったタイルでは、道のまん中の点と「形のまん中」がずれる。
-       サンプル点の重心をとると、どのタイルでも見た目の中央に文字が来る */
-    const c = [mid.reduce((s2, q) => s2 + q[0], 0) / mid.length,
-               mid.reduce((s2, q) => s2 + q[1], 0) / mid.length];
     const big = sq.t === "choice" || sq.t === "start" || sq.t === "goal";
     const tTxt = L(sq.name) || L(m.label);
     /* 年齢はトビラ・スタート・ゴールだけ。せまい画面では説明文は出さない */
@@ -334,27 +380,39 @@ function renderBoard() {
       : "";
     /* アイコン＋見出し＋説明のかたまりを、上下おなじ余白で置く */
     const dy = sTxt ? 5 : 14;
+    const yT = c[1] + (big ? 12 : 10) + dy, yS = c[1] + (big ? 32 : 28) + dy;
     gLabels.appendChild(tileIcon(sq.t, c[0], c[1] - (big ? 30 : 26) + dy, m.chip));
-    const title = el("text", { x: c[0], y: c[1] + (big ? 12 : 10) + dy, "text-anchor": "middle",
-      "font-size": fit(tTxt, big ? lay.fsBig : lay.fsSmall), "font-weight": 900, fill: m.ink });
+    const title = el("text", { x: c[0], y: yT, "text-anchor": "middle",
+      "font-size": fit(tTxt, big ? lay.fsBig : lay.fsSmall, yT), "font-weight": 900, fill: m.ink });
     title.textContent = tTxt;
     gLabels.appendChild(title);
     if (sTxt) {
-      const sub = el("text", { x: c[0], y: c[1] + (big ? 32 : 28) + dy, "text-anchor": "middle",
-        "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5), "font-weight": 700,
+      const sub = el("text", { x: c[0], y: yS, "text-anchor": "middle",
+        "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5, yS), "font-weight": 700,
         fill: big ? m.ink : "#6E7E8C", opacity: big ? .92 : 1 });
       sub.textContent = sTxt;
       gLabels.appendChild(sub);
     }
+    band[i] = poly;      /* 章のラベルを置くときに、どこが空いているかを測るのに使う */
   });
 
-  /* 章のラベルは、段と段のあいだの余白に置く */
+  /* 章のラベルは、段と段のあいだの「ほんとうに空いているところ」のまん中に置く。
+     角のタイルはとなりの段までふくらむので、盤面のまん中(cx)での空きだけを見る */
+  const cx = lay.vb[0] / 2, perRow = lay.sub ? 6 : 3;
+  const spans = band.map(poly => spanAtX(poly, cx));
   R.CHAPTERS.forEach((ch, r) => {
-    const t = L(ch.t), y = lay.chapY[r], cx = lay.vb[0] / 2;
+    const first = r * 6;
+    const tops = spans.slice(first, first + perRow).filter(Boolean).map(v => v[0] - 4.5);
+    const bots = spans.slice(0, first).filter(Boolean).map(v => v[1] + 4.5);
+    const top = tops.length ? Math.min(...tops) : 40;
+    const y = bots.length
+      ? (Math.max(...bots) + top) / 2
+      : Math.max(16, top - 30);                         /* 1章目だけは、段の上に同じだけ空けて置く */
+    const t = L(ch.t);
     const w = Math.min(lay.vb[0] - 24, t.length * (lay.sub ? 14 : 15) + 24);
-    gLabels.appendChild(el("rect", { x: cx - w/2, y: y - 15, width: w, height: 26, rx: 13,
+    gLabels.appendChild(el("rect", { x: cx - w/2, y: y - 13, width: w, height: 26, rx: 13,
       fill: "#fff", opacity: .95, stroke: "#DCE7EE", "stroke-width": 2 }));
-    const e = el("text", { x: cx, y: y + 3, "font-size": lay.sub ? 13.5 : 14.5, "font-weight": 900,
+    const e = el("text", { x: cx, y: y + 5, "font-size": lay.sub ? 13.5 : 14.5, "font-weight": 900,
       fill: "#3F5266", "text-anchor": "middle" });
     e.textContent = t;
     gLabels.appendChild(e);
