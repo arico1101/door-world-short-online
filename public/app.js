@@ -150,15 +150,18 @@ const NS = "http://www.w3.org/2000/svg";
 const el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
 const mqMobile = window.matchMedia("(max-width:700px)");
 
+/* 段と段のあいだを広くとるほど、曲がり角の半径(corner)を大きくできる。
+   半径がマスの幅に近いと内がわがつぶれて扇形になるので、幅の1.7倍以上を保つ。
+   空はマスを置くぶんだけ細くして、盤面を上まで使う。 */
 const LAY_WIDE = {
-  vb: [1160, 800], corner: 72,
-  pts: [[124,272],[1036,272],[1036,422],[124,422],[124,572],[1036,572],[1036,712],[124,712]],
+  vb: [1160, 965], corner: 112, skyH: 89,
+  pts: [[124,155],[1036,155],[1036,395],[124,395],[124,635],[1036,635],[1036,875],[124,875]],
   sub: true, tokenW: 48, tokenH: 62, fsBig: 19, fsSmall: 15,
 };
 const LAY_TALL = {
-  vb: [560, 1660], corner: 70,
-  pts: [[92,150],[468,150],[468,340],[92,340],[92,530],[468,530],[468,720],[92,720],
-        [92,910],[468,910],[468,1100],[92,1100],[92,1290],[468,1290],[468,1480],[92,1480]],
+  vb: [560, 1905], corner: 112, skyH: 78,
+  pts: [[92,140],[468,140],[468,380],[92,380],[92,620],[468,620],[468,860],[92,860],
+        [92,1100],[468,1100],[468,1340],[92,1340],[92,1580],[468,1580],[468,1820],[92,1820]],
   sub: false, tokenW: 46, tokenH: 58, fsBig: 21, fsSmall: 18,
 };
 const HALFW = { choice: 66, start: 62, goal: 62 };
@@ -204,92 +207,117 @@ function buildGeo(lay) {
   return { lay, at, seg: total / R.SQUARES.length };
 }
 
-/* 背景：日本・欧米・ウガンダが地つづきに並ぶ、一枚の風景 */
+/* 背景：日本・欧米・ウガンダが地つづきに並ぶ、一枚の風景。
+   3つの風景はそれぞれ「地平線を y=0」とした座標で描き、
+   同じ倍率で拡大して空の帯におさめる（縦だけ縮めるとつぶれて見えるため） */
+const SCENES = [
+  { cx: 0.15, w: 180, draw: a => {          /* 日本：富士山・鳥居・桜 */
+    a("path", { d: "M-169 0 L-83 -112 L3 0 Z", fill: "#BBD6E8" });
+    a("path", { d: "M-113 -76 L-83 -112 L-53 -76 q-30 14 -60 0 z", fill: "#FFFFFF" });
+    a("path", { d: "M17 0 v-56 M83 0 v-56", stroke: "#D95F45", "stroke-width": 10, "stroke-linecap": "round" });
+    a("path", { d: "M3 -56 h94 M11 -40 h78", stroke: "#D95F45", "stroke-width": 10, "stroke-linecap": "round" });
+    a("path", { d: "M145 -20 v22", stroke: "#B08968", "stroke-width": 7, "stroke-linecap": "round" });
+    a("circle", { cx: 139, cy: -38, r: 30, fill: "#F8CBDA" });
+    a("circle", { cx: 169, cy: -20, r: 21, fill: "#FBDCE6" });
+    a("circle", { cx: 117, cy: -16, r: 17, fill: "#FBDCE6" });
+  }},
+  { cx: 0.5, w: 126, draw: a => {           /* 欧米：街なみ */
+    [[-126,-70],[-84,-46],[-40,-92],[4,-56],[48,-76],[92,-44]].forEach(([bx, by], i) => {
+      a("rect", { x: bx, y: by, width: 34, height: -by, rx: 4, fill: i % 2 ? "#CBDAE9" : "#D9E5F0" });
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++)
+        if (by + 12 + r * 20 < -10) a("rect", { x: bx + 7 + c * 14, y: by + 12 + r * 20, width: 8, height: 10, rx: 2, fill: "#EEF5FA" });
+    });
+  }},
+  { cx: 0.85, w: 175, draw: a => {          /* ウガンダ：サバンナの丘・アカシア・丸い家 */
+    a("path", { d: "M-141 0 q120 -54 250 -14 q50 16 80 14 z", fill: "#DCEEC6" });
+    a("path", { d: "M-13 0 v-48", stroke: "#A98363", "stroke-width": 9, "stroke-linecap": "round" });
+    a("path", { d: "M-75 -48 q62 -34 124 0 q-62 14 -124 0 z", fill: "#8CC28A" });
+    a("path", { d: "M-61 -62 q48 -22 96 0 q-48 10 -96 0 z", fill: "#A2D19E" });
+    a("path", { d: "M81 0 a30 19 0 0 1 60 0 z", fill: "#EBCDA1" });
+    a("path", { d: "M73 -20 l38 -26 l38 26 z", fill: "#C99B6A" });
+    a("path", { d: "M-149 0 a22 14 0 0 1 44 0 z", fill: "#EBCDA1" });
+    a("path", { d: "M-155 -14 l28 -20 l28 20 z", fill: "#C99B6A" });
+  }},
+];
 function drawScenery(svg, lay) {
-  const [W, H] = lay.vb, sky = H * (lay.sub ? 0.265 : 0.115);
+  const [W, H] = lay.vb, skyH = lay.skyH;
   const defs = el("defs");
   const grad = el("linearGradient", { id: "sky", x1: 0, y1: 0, x2: 0, y2: 1 });
-  [["0%", "#DDEFF9"], ["46%", "#EDF7F1"], ["100%", "#E6F3DC"]].forEach(([o, c]) =>
+  [["0%", "#DDEFF9"], ["40%", "#EDF7F1"], ["100%", "#E6F3DC"]].forEach(([o, c]) =>
     grad.appendChild(el("stop", { offset: o, "stop-color": c })));
   defs.appendChild(grad); svg.appendChild(defs);
   svg.appendChild(el("rect", { width: W, height: H, fill: "url(#sky)" }));
 
   const g = el("g", {}), add = (t, a) => g.appendChild(el(t, a));
-  const k = W / 1160;                              /* 横幅にあわせて風景を縮める */
-  const x = v => v * k, y = v => v * (sky / 212);  /* 風景は空の帯の中に収める */
-  add("rect", { x: 0, y: 0, width: W, height: sky, fill: "#DCEEF9" });
-  add("circle", { cx: x(1088), cy: y(52), r: Math.max(14, x(28)), fill: "#FFE49A" });
-  [[150,54],[430,40],[700,60],[930,44]].forEach(([cx, cy]) => {
-    add("ellipse", { cx: x(cx), cy: y(cy), rx: x(34), ry: y(14), fill: "#fff", opacity: .9 });
-    add("ellipse", { cx: x(cx-24), cy: y(cy+7), rx: x(21), ry: y(11), fill: "#fff", opacity: .9 });
+  add("rect", { x: 0, y: 0, width: W, height: skyH, fill: "#DCEEF9" });
+  /* 太陽と雲。地平線の上の細い帯におさめる */
+  add("circle", { cx: W * 0.93, cy: skyH * 0.32, r: skyH * 0.2, fill: "#FFE49A" });
+  [0.1, 0.34, 0.6, 0.78].forEach(f => {
+    const cx = W * f, cy = skyH * 0.24, rx = skyH * 0.3, ry = skyH * 0.12;
+    add("ellipse", { cx, cy, rx, ry, fill: "#fff", opacity: .9 });
+    add("ellipse", { cx: cx - rx * 0.6, cy: cy + ry * 0.5, rx: rx * 0.62, ry: ry * 0.8, fill: "#fff", opacity: .9 });
   });
-  /* 日本：富士山・鳥居・桜 */
-  add("path", { d: `M${x(10)} ${y(196)} L${x(96)} ${y(84)} L${x(182)} ${y(196)} Z`, fill: "#BBD6E8" });
-  add("path", { d: `M${x(66)} ${y(120)} L${x(96)} ${y(84)} L${x(126)} ${y(120)} q${-x(30)} ${y(14)} ${-x(60)} 0 z`, fill: "#fff" });
-  add("path", { d: `M${x(196)} ${y(196)} v${-y(56)} M${x(262)} ${y(196)} v${-y(56)}`, stroke: "#D95F45", "stroke-width": x(10), "stroke-linecap": "round" });
-  add("path", { d: `M${x(182)} ${y(140)} h${x(94)} M${x(190)} ${y(156)} h${x(78)}`, stroke: "#D95F45", "stroke-width": x(10), "stroke-linecap": "round" });
-  add("circle", { cx: x(318), cy: y(158), r: x(30), fill: "#F8CBDA" });
-  add("circle", { cx: x(348), cy: y(176), r: x(21), fill: "#FBDCE6" });
-  add("circle", { cx: x(296), cy: y(180), r: x(17), fill: "#FBDCE6" });
-  /* 欧米：街なみ */
-  [[470,126],[512,150],[556,104],[600,140],[644,120],[688,152]].forEach(([bx, by], i) => {
-    add("rect", { x: x(bx), y: y(by), width: x(34), height: y(196-by), rx: 4, fill: i % 2 ? "#CBDAE9" : "#D9E5F0" });
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++)
-      add("rect", { x: x(bx+7+c*14), y: y(by+12+r*20), width: x(8), height: y(10), rx: 2, fill: "#EEF5FA" });
+  /* 3つの風景。倍率は縦横おなじ＝形がつぶれない */
+  const k = skyH / 124;
+  SCENES.forEach(sc => {
+    const cx = Math.min(W - sc.w * k - 4, Math.max(sc.w * k + 4, W * sc.cx));
+    const sg = el("g", { transform: `translate(${cx.toFixed(1)} ${skyH}) scale(${k.toFixed(3)})` });
+    sc.draw((t, a) => sg.appendChild(el(t, a)));
+    g.appendChild(sg);
   });
-  /* ウガンダ：サバンナの丘・アカシア・丸い家 */
-  add("path", { d: `M${x(820)} ${y(196)} q${x(120)} ${-y(54)} ${x(250)} ${-y(14)} q${x(50)} ${y(16)} ${x(80)} ${y(14)} z`, fill: "#DCEEC6" });
-  add("path", { d: `M${x(948)} ${y(196)} v${-y(48)}`, stroke: "#A98363", "stroke-width": x(9), "stroke-linecap": "round" });
-  add("path", { d: `M${x(886)} ${y(148)} q${x(62)} ${-y(34)} ${x(124)} 0 q${-x(62)} ${y(14)} ${-x(124)} 0 z`, fill: "#8CC28A" });
-  add("path", { d: `M${x(1042)} ${y(196)} a${x(30)} ${y(19)} 0 0 1 ${x(60)} 0 z`, fill: "#EBCDA1" });
-  add("path", { d: `M${x(1034)} ${y(176)} l${x(38)} ${-y(26)} l${x(38)} ${y(26)} z`, fill: "#C99B6A" });
   /* 道ぞいの木 */
-  const tree = (tx, ty, s) => {
-    add("path", { d: `M${tx} ${ty} v${16*s}`, stroke: "#A98363", "stroke-width": 4.5*s, "stroke-linecap": "round" });
-    add("circle", { cx: tx, cy: ty - 5*s, r: 13*s, fill: "#93C58F" });
-    add("circle", { cx: tx - 9*s, cy: ty + 2*s, r: 10*s, fill: "#7FB87F" });
-    add("circle", { cx: tx + 9*s, cy: ty + 1*s, r: 9*s, fill: "#7FB87F" });
+  const tree = (tx, ty, sz) => {
+    add("path", { d: `M${tx} ${ty} v${16*sz}`, stroke: "#A98363", "stroke-width": 4.5*sz, "stroke-linecap": "round" });
+    add("circle", { cx: tx, cy: ty - 5*sz, r: 13*sz, fill: "#93C58F" });
+    add("circle", { cx: tx - 9*sz, cy: ty + 2*sz, r: 10*sz, fill: "#7FB87F" });
+    add("circle", { cx: tx + 9*sz, cy: ty + 1*sz, r: 9*sz, fill: "#7FB87F" });
   };
-  const inset = lay.sub ? 46 : 30;
-  for (let i = 0; i < (lay.sub ? 3 : 6); i++) {
-    const ty = sky + 40 + (H - sky - 70) * (i + .5) / (lay.sub ? 3 : 6);
+  const inset = lay.sub ? 46 : 28, n = lay.sub ? 4 : 8;
+  for (let i = 0; i < n; i++) {
+    const ty = skyH + 50 + (H - skyH - 90) * (i + .5) / n;
     tree(inset, ty, lay.sub ? 1 : .8);
-    tree(W - inset, ty + 30, lay.sub ? .9 : .75);
+    tree(W - inset, ty + 34, lay.sub ? .9 : .75);
   }
   svg.appendChild(g);
 }
 
-/* 多角形の面積重心。つぶれた形のときは、道のまん中の平均で代用する */
-function polyCenter(poly, fallback) {
-  let a = 0, cx = 0, cy = 0;
-  for (let k = 0; k < poly.length; k++) {
-    const [x0, y0] = poly[k], [x1, y1] = poly[(k + 1) % poly.length];
-    const f = x0 * y1 - x1 * y0;
-    a += f; cx += (x0 + x1) * f; cy += (y0 + y1) * f;
-  }
-  if (Math.abs(a) < 1e-6) return [fallback.reduce((s, q) => s + q[0], 0) / fallback.length,
-                                  fallback.reduce((s, q) => s + q[1], 0) / fallback.length];
-  return [cx / (3 * a), cy / (3 * a)];
-}
-
-/* 高さ y のところで、その形が横に何ひろがっているか。
-   角のタイルは場所によって幅がちがうので、文字を入れる前にここで測る */
-function widthAtY(poly, y, xc) {
+/* 高さ y のところで、その形の中にとれる「いちばん長い横の線」。無ければ null */
+function widestSpan(poly, y) {
   const xs = [];
   for (let k = 0; k < poly.length; k++) {
     const [x0, y0] = poly[k], [x1, y1] = poly[(k + 1) % poly.length];
     if ((y0 <= y && y1 > y) || (y1 <= y && y0 > y)) xs.push(x0 + (x1 - x0) * (y - y0) / (y1 - y0));
   }
-  if (xs.length < 2) return 0;
+  if (xs.length < 2) return null;
   xs.sort((a, b) => a - b);
-  let w = 0;
-  for (let k = 0; k + 1 < xs.length; k += 2) {
-    const lo = xs[k], hi = xs[k + 1];
-    if (xc < lo || xc > hi) continue;
-    /* 文字は xc を中心にならぶので、左右の狭いほうが効く */
-    w = Math.max(w, 2 * Math.min(xc - lo, hi - xc));
+  let best = null;
+  for (let k = 0; k + 1 < xs.length; k += 2)
+    if (!best || xs[k + 1] - xs[k] > best[1] - best[0]) best = [xs[k], xs[k + 1]];
+  return best;
+}
+/* マスの中で、文字のかたまりがいちばん広く入る場所をさがす。
+   まっすぐなマスならまん中、Uターンのマスなら曲がりの外がわの太いところが選ばれる。
+   offs は「かたまりの中心から見た、各行の位置」 */
+function bestLabelSpot(poly, offs) {
+  const ys = poly.map(q => q[1]);
+  const top = Math.min(...ys), bot = Math.max(...ys), N = 30;
+  const probes = [];
+  offs.forEach(o => { probes.push(o - 12, o + 4); });
+  const cand = [];
+  for (let i = 0; i <= N; i++) {
+    const ay = top + (bot - top) * i / N;
+    let lo = -Infinity, hi = Infinity;
+    for (const o of probes) {
+      const sp = widestSpan(poly, ay + o);
+      if (!sp) { lo = 0; hi = -1; break; }
+      lo = Math.max(lo, sp[0]); hi = Math.min(hi, sp[1]);
+    }
+    if (hi - lo > 0) cand.push({ x: (lo + hi) / 2, y: ay, w: hi - lo });
   }
-  return w;
+  if (!cand.length) return null;
+  const max = Math.max(...cand.map(c => c.w));
+  const tie = cand.filter(c => c.w >= max - 1);        /* 同じ広さなら、そのまん中に置く */
+  return tie[Math.floor(tie.length / 2)];
 }
 
 /* 横位置 x のところで、その形が上下どこからどこまであるか。無ければ null */
@@ -360,35 +388,40 @@ function renderBoard() {
     gTiles.appendChild(el("path", { d, id: `sq-${i}`, fill: m.fill, stroke: "#FFFFFF", "stroke-width": 9, "stroke-linejoin": "round" }));
 
     const poly = left.concat(right);
-    /* 塗りつぶした形そのものの重心。曲がったタイルでも、上下左右おなじ余白で文字が入る */
-    const c = polyCenter(poly, mid);
-    /* 文字は横に並ぶので、その高さでの「形の実はば」に合わせて字を詰める。
-       まるごとの外接四角で測ると、角のタイルではみ出す */
-    const fit = (txt, base, y) => {
-      const w = [...txt].reduce((s2, ch) => s2 + (ch.charCodeAt(0) > 0x2E80 ? 1 : 0.55), 0);
-      /* 文字の高さのぶん、上・中・下の3か所で測って、いちばん狭いところに合わせる */
-      const up = base * 0.8;
-      const room = Math.max(46, Math.min(widthAtY(poly, y, c[0]),
-        widthAtY(poly, y - up / 2, c[0]), widthAtY(poly, y - up, c[0])) - 30);
-      return Math.max(9, Math.min(base, room / Math.max(1, w)));
-    };
     const big = sq.t === "choice" || sq.t === "start" || sq.t === "goal";
     const tTxt = L(sq.name) || L(m.label);
+    /* このマスが曲がりの上にあるか。大きく曲がるマスは横に使える幅がせまいので、
+       説明文まで入れると字が小さくなりすぎる。年齢だけにする */
+    const v0 = [mid[1][0] - mid[0][0], mid[1][1] - mid[0][1]];
+    const v1 = [mid[M][0] - mid[M-1][0], mid[M][1] - mid[M-1][1]];
+    const cos = (v0[0]*v1[0] + v0[1]*v1[1]) / ((Math.hypot(v0[0],v0[1]) * Math.hypot(v1[0],v1[1])) || 1);
+    const curvy = cos < 0.64;                           /* 約50度より大きく曲がる */
     /* 年齢はトビラ・スタート・ゴールだけ。せまい画面では説明文は出さない */
-    const sTxt = (big || lay.sub)
-      ? (big ? (ja() ? `${R.AGES[i]}歳` : `Age ${R.AGES[i]}`) + (L(sq.sub) ? "・" + L(sq.sub) : "") : (L(sq.sub) || ""))
-      : "";
-    /* アイコン＋見出し＋説明のかたまりを、上下おなじ余白で置く */
+    const ageTxt = ja() ? `${R.AGES[i]}歳` : `Age ${R.AGES[i]}`;
+    const sTxt = big
+      ? (curvy ? ageTxt : ageTxt + (L(sq.sub) ? "・" + L(sq.sub) : ""))
+      : ((lay.sub && !curvy) ? (L(sq.sub) || "") : "");
+    /* アイコン・見出し・説明の位置（かたまりの中心から見た相対位置）。
+       上下おなじ余白になるよう、説明のあるなしでずらす */
     const dy = sTxt ? 5 : 14;
-    const yT = c[1] + (big ? 12 : 10) + dy, yS = c[1] + (big ? 32 : 28) + dy;
-    gLabels.appendChild(tileIcon(sq.t, c[0], c[1] - (big ? 30 : 26) + dy, m.chip));
-    const title = el("text", { x: c[0], y: yT, "text-anchor": "middle",
-      "font-size": fit(tTxt, big ? lay.fsBig : lay.fsSmall, yT), "font-weight": 900, fill: m.ink });
+    const offs = [-(big ? 30 : 26) + dy, (big ? 12 : 10) + dy];
+    if (sTxt) offs.push((big ? 32 : 28) + dy);
+    const spot = bestLabelSpot(poly, offs)
+      || { x: mid[Math.floor(mid.length / 2)][0], y: mid[Math.floor(mid.length / 2)][1], w: 2 * hw };
+    /* 文字はこの幅におさめる。曲がったマスでも白いフチをまたがない */
+    const room = Math.max(46, spot.w - 26);
+    const fit = (txt, base) => {
+      const w = [...txt].reduce((s2, ch) => s2 + (ch.charCodeAt(0) > 0x2E80 ? 1 : 0.55), 0);
+      return Math.max(9, Math.min(base, room / Math.max(1, w)));
+    };
+    gLabels.appendChild(tileIcon(sq.t, spot.x, spot.y + offs[0], m.chip));
+    const title = el("text", { x: spot.x, y: spot.y + offs[1], "text-anchor": "middle",
+      "font-size": fit(tTxt, big ? lay.fsBig : lay.fsSmall), "font-weight": 900, fill: m.ink });
     title.textContent = tTxt;
     gLabels.appendChild(title);
     if (sTxt) {
-      const sub = el("text", { x: c[0], y: yS, "text-anchor": "middle",
-        "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5, yS), "font-weight": 700,
+      const sub = el("text", { x: spot.x, y: spot.y + offs[2], "text-anchor": "middle",
+        "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5), "font-weight": 700,
         fill: big ? m.ink : "#6E7E8C", opacity: big ? .92 : 1 });
       sub.textContent = sTxt;
       gLabels.appendChild(sub);
