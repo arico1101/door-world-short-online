@@ -295,6 +295,20 @@ function widestSpan(poly, y) {
     if (!best || xs[k + 1] - xs[k] > best[1] - best[0]) best = [xs[k], xs[k + 1]];
   return best;
 }
+/* 横位置 x のところで、yRef をふくむ「ひとつづきの縦のひろがり」。無ければ null。
+   Uターンのマスは同じ x で上の腕と下の腕をまたぐので、つながった区間だけを返す */
+function vSpanAt(poly, x, yRef) {
+  const ys = [];
+  for (let k = 0; k < poly.length; k++) {
+    const [x0, y0] = poly[k], [x1, y1] = poly[(k + 1) % poly.length];
+    if ((x0 <= x && x1 > x) || (x1 <= x && x0 > x)) ys.push(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+  }
+  if (ys.length < 2) return null;
+  ys.sort((a, b) => a - b);
+  for (let k = 0; k + 1 < ys.length; k += 2)
+    if (yRef >= ys[k] - 1 && yRef <= ys[k + 1] + 1) return [ys[k], ys[k + 1]];
+  return null;
+}
 /* マスの中で、文字のかたまりがいちばん広く入る場所をさがす。
    まっすぐなマスならまん中、Uターンのマスなら曲がりの外がわの太いところが選ばれる。
    offs は「かたまりの中心から見た、各行の位置」 */
@@ -331,6 +345,13 @@ function spanAtX(poly, x) {
 }
 
 /* マスのアイコン（盤面用・線で描く） */
+/* アイコンの上下のひろがり（線の太さこみ）。種類ごとに高さがちがうので、
+   文字のかたまりを上下まんなかに置くにはこれを見込む必要がある */
+const ICON_Y = {
+  income: [-12, 12], cost: [-15, 16], event: [-16, 18], heavy: [-16, 18], learn: [-10, 11],
+  choice: [-21, 17], start: [-9, 9], goal: [-12, 16], talk: [-14, 15], fam: [-12, 12],
+};
+
 function tileIcon(type, cx, cy, c) {
   const g = el("g", { transform: `translate(${cx} ${cy})` });
   const a = (t, at) => g.appendChild(el(t, at));
@@ -353,6 +374,11 @@ function tileIcon(type, cx, cy, c) {
     a("circle", { cx: 6, cy: 5, r: 2.6, fill: "#D4547A" });
   } else if (type === "start") {
     a("path", { ...S, d: "M-12 0 h20 M2 -7 l8 7 l-8 7", stroke: "#fff", "stroke-width": 4 });
+  } else if (type === "talk") {
+    a("circle", { cx: -7, cy: -7, r: 5.2, fill: "#fff", stroke: c, "stroke-width": 2.6 });
+    a("path", { d: "M-16 13 a9 9 0 0 1 18 0 z", fill: "#fff", stroke: c, "stroke-width": 2.6, "stroke-linejoin": "round" });
+    a("circle", { cx: 9, cy: -4, r: 4.4, fill: "#BFE6D2", stroke: c, "stroke-width": 2.6 });
+    a("path", { d: "M2 13 a7.5 7.5 0 0 1 15 0 z", fill: "#BFE6D2", stroke: c, "stroke-width": 2.6, "stroke-linejoin": "round" });
   } else if (type === "goal") {
     a("path", { ...S, d: "M-9 14 v-24", stroke: "#7A6320", "stroke-width": 3.4 });
     a("path", { d: "M-9 -10 h20 v12 h-20 z", fill: "#fff", stroke: "#7A6320", "stroke-width": 2.6 });
@@ -396,12 +422,19 @@ function renderBoard() {
       ? ageTxt + (L(sq.sub) ? "・" + L(sq.sub) : "")
       : (lay.sub ? (L(sq.sub) || "") : "");
     /* アイコン・見出し・説明の位置（かたまりの中心から見た相対位置）。
-       上下おなじ余白になるよう、説明のあるなしでずらす */
-    const dy = sTxt ? 5 : 14;
-    const offs = [-(big ? 30 : 26) + dy, (big ? 12 : 10) + dy];
-    if (sTxt) offs.push((big ? 32 : 28) + dy);
+       アイコンの高さはマスの種類でちがうので、それを見込んで上下おなじ余白にそろえる */
+    const iy = ICON_Y[sq.t] || [-12, 12];
+    const oIcon = -(big ? 30 : 26), oTitle = (big ? 12 : 10), oSub = (big ? 32 : 28);
+    const blockTop = oIcon + iy[0], blockBot = sTxt ? oSub + 3 : oTitle + 4;
+    const dy = -(blockTop + blockBot) / 2;
+    const offs = [oIcon + dy, oTitle + dy];
+    if (sTxt) offs.push(oSub + dy);
     const spot = bestLabelSpot(poly, offs)
       || { x: mid[Math.floor(mid.length / 2)][0], y: mid[Math.floor(mid.length / 2)][1], w: 2 * hw };
+    /* 上と下の余白をそろえる。いちばん広い場所は、曲がったマスだと上下どちらかに
+       よることがあるので、その位置での「マスの縦のまん中」に置きなおす */
+    const vSpan = vSpanAt(poly, spot.x, spot.y);
+    if (vSpan) spot.y = (vSpan[0] + vSpan[1]) / 2;
     /* 1行ごとに、その高さで使える幅を測る。曲がったマスでも白いフチをまたがない。
        まとめて一番せまいところに合わせると、曲がりのマスだけ字が潰れてしまう */
     const roomAt = ys => {
