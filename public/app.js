@@ -192,6 +192,7 @@ const LAY_TALL = {
   sub: false, tokenW: 46, tokenH: 58, fsBig: 21, fsSmall: 18,
 };
 const HALFW = { choice: 66, start: 62, goal: 62 };
+const WOOD = "#A87E58";   /* 道しるべの木の色。盤面の木の幹(#A98363)とそろえてある */
 const halfW = t => HALFW[t] || 52;
 
 let geo = null;   /* {lay, at(s), seg} — コマの位置計算でも使う */
@@ -363,6 +364,21 @@ function bestLabelSpot(poly, offs) {
   return tie[Math.floor(tie.length / 2)];
 }
 
+/* 道をよこぎる白いすきま。マスとマスの継ぎ目(白フチ9px)より太くとって、
+   「ここで章が変わる」ことを、切れ目の広さそのものであらわす */
+function gapPath(at, s, hw, half) {
+  const M = 10, l = [], r = [];
+  for (let k = 0; k <= M; k++) {
+    const { p, n } = at(s - half + 2 * half * k / M);
+    l.push([p[0] + n[0]*hw, p[1] + n[1]*hw]);
+    r.push([p[0] - n[0]*hw, p[1] - n[1]*hw]);
+  }
+  return "M" + l.map(q => q[0].toFixed(1) + " " + q[1].toFixed(1)).join(" L ")
+    + " L " + r.reverse().map(q => q[0].toFixed(1) + " " + q[1].toFixed(1)).join(" L ") + " Z";
+}
+/* 文字のはば。全角は1、半角は0.55で見つもる（タイルの文字合わせと同じ数え方） */
+const textW = t => [...t].reduce((a, c) => a + (c.charCodeAt(0) > 0x2E80 ? 1 : .55), 0);
+
 /* 横位置 x のところで、その形が上下どこからどこまであるか。無ければ null */
 function spanAtX(poly, x) {
   const ys = [];
@@ -427,7 +443,7 @@ function renderBoard() {
   const gTiles = el("g", {}), gLabels = el("g", {});
   svg.appendChild(gTiles); svg.appendChild(gLabels);
   const { at, seg } = geo;
-  const band = [];                                      /* 各マスの上下端。章ラベルの位置決めに使う */
+  const band = [];                                      /* 各マスの形。道しるべの柱の長さを決めるのに使う */
 
   R.SQUARES.forEach((sq, i) => {
     const m = R.TYPE_META[sq.t], hw = halfW(sq.t);
@@ -498,30 +514,64 @@ function renderBoard() {
         gLabels.appendChild(sub);
       }
     }
-    band[i] = poly;      /* 章のラベルを置くときに、どこが空いているかを測るのに使う */
+    band[i] = poly;
   });
 
-  /* 章のラベルは、段と段のあいだの「ほんとうに空いているところ」のまん中に置く。
-     角のタイルはとなりの段までふくらむので、盤面のまん中(cx)での空きだけを見る */
-  const cx = lay.vb[0] / 2, perRow = lay.sub ? 6 : 3;
-  const spans = band.map(poly => spanAtX(poly, cx));
+  /* 章の見出しは、マスとマスの切れ目に立てる道しるべ。
+     章の変わり目はちょうどUターンのまんなか（切り口が水平）になるよう盤面がつくってあるので、
+     そこだけ白いすきまを太くして、そのわきに立てる。浮いた帯ではなく、盤面の木や家とおなじ
+     「この世界に立っているもの」として読ませたいので、柱と地面の影をつけてある。
+     1章目だけは前のマスがないので、道のはじまりに立てる。 */
+  const gChap = el("g", {});
+  svg.appendChild(gChap);
   R.CHAPTERS.forEach((ch, r) => {
-    const first = r * 6;
-    const tops = spans.slice(first, first + perRow).filter(Boolean).map(v => v[0] - 4.5);
-    const bots = spans.slice(0, first).filter(Boolean).map(v => v[1] + 4.5);
-    const top = tops.length ? Math.min(...tops) : 40;
-    const y = bots.length
-      ? (Math.max(...bots) + top) / 2
-      : Math.max(16, top - 30);                         /* 1章目だけは、段の上に同じだけ空けて置く */
     const t = L(ch.t);
-    const w = Math.min(lay.vb[0] - 24, t.length * (lay.sub ? 14 : 15) + 24);
-    gLabels.appendChild(el("rect", { x: cx - w/2, y: y - 13, width: w, height: 26, rx: 13,
-      fill: "#fff", opacity: .95, stroke: "#DCE7EE", "stroke-width": 2 }));
-    const e = el("text", { x: cx, y: y + 5, "font-size": lay.sub ? 13.5 : 14.5, "font-weight": 900,
-      fill: "#3F5266", "text-anchor": "middle" });
-    e.textContent = t;
-    gLabels.appendChild(e);
+    if (r === 0) {
+      /* スタートの上はコマ（と「あなた」の札）が立つ場所なので、道のはじまりの下がわに立てる */
+      const { p } = at(3.5), bot = p[1] + halfW(R.SQUARES[0].t);
+      post(p[0], Math.min(bot + 74, grass(p[0], bot + 38)[1]), bot + 4, bot + 38);
+      sign(p[0], bot + 38, 1, t);
+      return;
+    }
+    const s = r * 6 * seg, { p } = at(s);
+    const hw = Math.max(halfW(R.SQUARES[r*6 - 1].t), halfW(R.SQUARES[r*6].t));
+    const dir = p[0] > lay.vb[0] / 2 ? -1 : 1;          /* 右はしのUターンなら、板は左へのばす */
+    const px = p[0] + dir * (hw + 30), [up, dn] = grass(px, p[1]);
+    const y0 = Math.min(p[1] + 46, dn);                 /* 足もとが下の段にめりこまないようにする */
+    const y1 = Math.max(p[1] - 30 - (p[1] + 46 - y0), up);   /* 下で削ったぶんは上へのばす */
+    gChap.appendChild(el("path", { d: gapPath(at, s, hw + 4.5, 11), fill: "#FFFFFF" }));
+    post(px, y0, y1, p[1]);
+    sign(px, p[1], dir, t);
   });
+
+  /* 横位置 x の、高さ y をふくむ「タイルのない縦のすきま」 */
+  function grass(x, y) {
+    const sp = band.map(poly => spanAtX(poly, x)).filter(Boolean);
+    const up = sp.map(v => v[1]).filter(b => b < y - 20), dn = sp.map(v => v[0]).filter(t => t > y + 20);
+    return [up.length ? Math.max(...up) + 8 : 0, dn.length ? Math.min(...dn) - 8 : lay.vb[1]];
+  }
+  function post(x, y0, y1, cy) {
+    if (y0 > cy + 29)                                   /* 板の下に柱が見えるときだけ、足もとの影をつける */
+      gChap.appendChild(el("ellipse", { cx: x, cy: y0, rx: 12, ry: 4.5, fill: "#7FB87F", opacity: .5 }));
+    gChap.appendChild(el("path", { d: `M${x.toFixed(1)} ${y0.toFixed(1)} V${y1.toFixed(1)}`,
+      stroke: WOOD, "stroke-width": 8, "stroke-linecap": "round" }));
+  }
+  /* 板は dir(+1=右/-1=左) の向きへのばし、柱がわの先を道に向けてとがらせる。
+     盤面のはしまでの空きが足りないときは、字を小さくして board におさめる */
+  function sign(px, cy, dir, t) {
+    const H = 36, tip = 14, cw = textW(t);
+    const room = (dir > 0 ? lay.vb[0] - 14 - px : px - 14) - 34;
+    const fs = Math.max(11, Math.min(15.5, room / cw));
+    const w = cw * fs + 34, nx = px + dir * tip, fx = px + dir * w;
+    gChap.appendChild(el("path", {
+      d: `M${px.toFixed(1)} ${cy.toFixed(1)} L${nx.toFixed(1)} ${(cy - H/2).toFixed(1)} `
+       + `H${fx.toFixed(1)} V${(cy + H/2).toFixed(1)} H${nx.toFixed(1)} Z`,
+      fill: "#FFFBF2", stroke: WOOD, "stroke-width": 2.6, "stroke-linejoin": "round" }));
+    const e = el("text", { x: (px + dir * (w + tip) / 2).toFixed(1), y: (cy + fs * .35).toFixed(1),
+      "text-anchor": "middle", "font-size": fs, "font-weight": 900, fill: "#4A5C6E" });
+    e.textContent = t;
+    gChap.appendChild(e);
+  }
 
   svg.appendChild(el("g", { id: "tokLayer" }));
 }
