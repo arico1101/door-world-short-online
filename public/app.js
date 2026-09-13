@@ -797,6 +797,7 @@ function renderPending() {
     const doors = R.shuffle(pd.opts.map((_, i) => i)).map(i => {
       const o = pd.opts[i], st = pd.states[i];
       if (st === "unseen") return `<button class="door unseen" disabled>
+          <span class="d-badge unseen">${ic("eye", "s")}${ja() ? "見えないトビラ" : "A door you can't see"}</span>
           <span class="d-title">？？？</span>
           <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></button>`;
       const key2 = reqLabel(p, o), ok = st === "open";
@@ -812,12 +813,16 @@ function renderPending() {
         : (o.req.maxMoney != null && p.money >= o.req.maxMoney
           ? (ja() ? "（対象外…）" : " (not eligible…)") : (ja() ? "（たりない…）" : " (not enough…)"));
       return `<button class="door ${ok ? "open" : "locked"}" data-i="${i}" ${ok && mine ? "" : "disabled"}>
+          <span class="d-badge ${ok ? "open" : "lock"}">${ic(ok ? "door" : "lock", "s")}${ok
+            ? (ja() ? "開けられるトビラ" : "A door you can open")
+            : (ja() ? "カギが足りないトビラ" : "A door you can't open")}</span>
           <span class="d-title">${L(o.t)}</span>
           <span class="d-desc">${L(o.d)}</span>
           ${key2 ? `<span class="d-key">${ic(ok ? "door" : "lock", "s")}${ja() ? "カギ：" : "Key: "}${key2}${ok ? "" : short}</span>` : ""}${cost}
         </button>`;
     }).join("");
-    const stuck = !(pd.states || []).includes("open");
+    const openN = (pd.states || []).filter(x => x === "open").length;
+    const stuck = openN === 0;
     openModal(`<div class="m-head">
         ${tagChip(pd.def.heavy ? "heavy" : "choice")}
         <h2>${L(pd.def.title)}</h2>
@@ -827,6 +832,9 @@ function renderPending() {
       </div>
       <div class="m-body">
         <p class="m-lead">${L(pd.def.body)}</p>
+        <div class="door-note">${ic("door", "s")}<span>${ja()
+          ? `この下のひとつひとつが「<b>トビラ</b>」。いま開けられるのは <b>${openN}枚</b>。<br>開けたトビラの数は、25歳のけっかで数えます。`
+          : `Each option below is one <b>door</b>. <b>${openN}</b> will open right now.<br>The doors you opened are counted in the results at 25.`}</span></div>
         <div class="door-list">${doors}</div>
         ${stuck && mine ? `<div class="m-note" style="margin-top:14px">${ja() ? "開けられるトビラが、ひとつもなかった…。" : "Not a single door would open…"}</div>
           <button class="m-btn" id="mPass">${ja() ? "今回は見送る" : "Pass this time"}</button>` : ""}
@@ -1026,6 +1034,7 @@ function showResult() {
     const total = p.open + p.locked + p.unseen;
     const pct = n => total ? Math.round(n / total * 100) : 0;
     const diff = p.money - p.initMoney;
+    const dLearn = p.learn - (p.initLearn != null ? p.initLearn : 1);
     const tone = R.FAM_TONE[p.fam.region.ja] || ["#E9A87C", "#D98E63"];
     const card = document.createElement("div");
     card.className = "res-card";
@@ -1039,11 +1048,18 @@ function showResult() {
         </div>
       </div>
       <div class="r-stats">
-        <span class="fx m3">♥ ${p.happy}</span>
-        <span class="fx m1">${fm(p.money)} <small style="font-weight:700">(${diff >= 0 ? "+" : ""}${fm(diff)})</small></span>
-        <span class="fx m2">★ ${p.learn}</span>
-        ${p.loan > 0 ? `<span class="fx" style="color:#C98A3C">${ja() ? `奨学金 ${fm(p.loan)} 未返済` : `${fm(p.loan)} unpaid`}</span>` : ""}
+        <div class="rs happy"><div class="k">${ic("heart")}${ja() ? "ハッピー" : "Happiness"}</div>
+          <div class="v"><s>0</s>${p.happy}</div>
+          <div class="d ${p.happy > 0 ? "up" : ""}">${p.happy > 0 ? "+" + p.happy : (ja() ? "変わらず" : "no change")}</div></div>
+        <div class="rs money"><div class="k">${ic("coin")}${ja() ? "おかね" : "Money"}</div>
+          <div class="v"><s>${fm(p.initMoney)}</s>${fm(p.money)}</div>
+          <div class="d ${diff > 0 ? "up" : (diff < 0 ? "dn" : "")}">${diff > 0 ? "+" : ""}${diff === 0 ? (ja() ? "変わらず" : "no change") : fm(diff)}</div></div>
+        <div class="rs learn"><div class="k">${ic("star")}${ja() ? "まなび" : "Learning"}</div>
+          <div class="v"><s>★${p.initLearn != null ? p.initLearn : 1}</s>★${p.learn}</div>
+          <div class="d ${dLearn > 0 ? "up" : ""}">${dLearn > 0 ? "+" + dLearn : (ja() ? "変わらず" : "no change")}</div></div>
       </div>
+      ${p.loan > 0 ? `<div class="r-loan">${ic("cap", "s")} ${ja()
+        ? `奨学金が、まだ <b>${fm(p.loan)}</b> のこっている` : `<b>${fm(p.loan)}</b> of the scholarship is still unpaid`}</div>` : ""}
       <div class="r-ending"><b>${ja() ? "25歳のいま" : "Life at 25"}</b>：${L(R.endingText(p, playing.length === 1))}</div>
       <div class="doorbar">
         <div class="seg-open" style="width:${pct(p.open)}%"></div>

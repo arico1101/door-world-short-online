@@ -91,7 +91,7 @@ export class Room {
     };
     if (reveal) {                                       /* 結果発表で全公開 */
       o.fam = p.fam; o.perk = p.perk; o.mult = p.mult; o.aai = p.aai; o.univ = p.univ;
-      o.hidden = p.hidden; o.deaiUsed = p.deaiUsed; o.initMoney = p.initMoney;
+      o.hidden = p.hidden; o.deaiUsed = p.deaiUsed; o.initMoney = p.initMoney; o.initLearn = p.initLearn;
       o.open = p.open; o.locked = p.locked; o.unseen = p.unseen; o.doorLog = p.doorLog;
       o.loan = p.loan;                                  /* 25歳では返し終わらない。残額を結果発表に出す */
     }
@@ -248,6 +248,7 @@ export class Room {
         fam, perk: fam.perk, hidden: [...fam.hide],
         pos: 0, money: fam.money, initMoney: fam.money, allow: fam.allow,
         learn: 1 + ((fam.perk === "kinben" || fam.perk === "kokusai") ? 1 : 0), happy: 0,
+        initLearn: 1 + ((fam.perk === "kinben" || fam.perk === "kokusai") ? 1 : 0),
         mult: fam.rural ? 5 : 10, aai: false, univ: false, loan: 0,
         open: 0, locked: 0, unseen: 0, doorLog: [],
         shienDiscount: false, shienUsed: false, deaiUsed: false,
