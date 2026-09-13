@@ -173,34 +173,53 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
   display:inline-flex; align-items:center; gap:4px;}
 .big-amount{text-align:center; font-size:28px; font-weight:900; margin:10px 0 14px;}
 
-/* 選択肢 */
+/* 選択肢（トビラ）。どれも同じ青のボタン。開くかどうかは押すまで分からない */
 .door-list{display:flex; flex-direction:column; gap:9px;}
-.door{display:block; width:100%; text-align:left; border-radius:16px; padding:12px 15px;
-  transition:transform .08s; background:#F7FBFD;}
+.door{display:block; width:100%; text-align:left; border-radius:16px; padding:13px 16px;
+  transition:background .14s, transform .08s; background:#E8F0F8; color:var(--ink);
+  box-shadow:inset 0 0 0 2px #DAE7F3;}
+.door.pick{cursor:pointer;}
+.door.pick:hover{background:#DBE9F7; box-shadow:inset 0 0 0 2px #BED4EA;}
 .door:not(:disabled):active{transform:translateY(2px);}
+/* 説明文は、ホバーできる画面ではホバーしたときだけ。スマホなどでは最初から見せる */
+.door .d-more{display:block;}
+@media (hover:hover) and (pointer:fine){
+  .door .d-more{display:grid; grid-template-rows:0fr; opacity:0;
+    transition:grid-template-rows .18s ease, opacity .18s ease;}
+  .door .d-more > *{overflow:hidden;}
+  .door.pick:hover .d-more, .door.pick:focus-visible .d-more{grid-template-rows:1fr; opacity:1;}
+}
+.pick-hint{font-size:12px; font-weight:700; color:var(--sub); text-align:center;
+  line-height:1.8; margin-top:13px;}
+/* 押したあとの確認 */
+.c-card{border-radius:18px; padding:14px 16px; margin-bottom:15px;}
+.c-card.ok{background:#EAF6EF; box-shadow:inset 0 0 0 2px #C9E7D6;}
+.c-card.ng{background:#FAEEE9; box-shadow:inset 0 0 0 2px #EFD7CB;}
+.c-title{font-size:17px; font-weight:900; line-height:1.5; margin-bottom:3px;}
+.c-key{margin-top:9px; font-size:12.5px; font-weight:900; color:#7A5E2E; line-height:1.7;}
+.c-key .c-now{display:block; font-size:11.5px; font-weight:700; color:var(--sub);}
+.c-ask{text-align:center; font-size:14.5px; font-weight:900; margin:4px 0 12px; line-height:1.7;}
+.c-ask.ng{color:#B4643C; font-size:13.5px; display:flex; align-items:center;
+  justify-content:center; gap:6px; flex-wrap:wrap;}
 .d-badge{display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:900;
   letter-spacing:.04em; border-radius:999px; padding:2px 10px; margin-bottom:6px;}
-.d-badge.open{background:#FCE3EB; color:#C4507A;}
+.d-badge.plain{background:#D6E5F4; color:#4B6E93;}
+.d-badge.open{background:#CFEBDC; color:#3B7E58;}
 .d-badge.lock{background:#F6DFD2; color:#B4682F;}
 .d-badge.unseen{background:#E8E2F7; color:#6E5BA8;}
-.door-note{display:flex; align-items:flex-start; gap:6px; background:#FFF1F5; border-radius:14px;
-  padding:10px 13px; font-size:11.5px; font-weight:700; line-height:1.8; color:#9B4A69;
-  margin-bottom:12px;}
-.door-note .ic{margin-top:4px; flex:none;}
-.door-note b{color:#C4507A;}
+/* トビラの画面に置く、画面上部とおなじプレイヤーカード */
+.m-pcard{opacity:1; margin-bottom:13px; padding:9px 13px;}
 .door .d-title{display:block; font-size:15px; font-weight:900; line-height:1.45;}
 .door .d-desc{display:block; font-size:11.5px; font-weight:700; color:#6E7E8C; margin-top:3px; line-height:1.65;}
 .door .d-cons{display:block; font-size:11.5px; font-weight:700; color:#B4707A; margin-top:4px; line-height:1.65;}
 .door.locked .d-cons{color:#BC8A8A;} .door.unseen .d-cons{display:none;}
 .door .d-key{display:flex; font-size:11.5px; font-weight:900; margin-top:7px;
   align-items:center; gap:4px; flex-wrap:wrap;}
-.door.open{background:#FDF3D9;} .door.open .d-key{color:#A9801F;}
-.door.locked{background:#FBEDED; cursor:not-allowed;} .door.locked .d-key{color:#C25B5B;}
 .door.unseen{background:repeating-linear-gradient(45deg,#F1F3F5,#F1F3F5 9px,#EAEEF1 9px,#EAEEF1 18px);
-  cursor:not-allowed;}
+  cursor:not-allowed; box-shadow:none;}
 .door.unseen .d-title{color:#9AA7B2; letter-spacing:.16em;}
 .door.unseen .d-desc{color:#AEB9C2;}
-.d-cost{font-size:11.5px; font-weight:900; margin-top:4px; display:block;}
+.d-cost{font-size:13px; font-weight:900; margin-top:8px; display:flex; align-items:center; gap:5px;}
 .d-cost.minus{color:#C25B5B;} .d-cost.plus{color:#4FA85E;}
 .d-cost s{opacity:.55; margin-right:3px; font-weight:700;}
 

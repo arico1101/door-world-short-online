@@ -178,16 +178,17 @@ const mqMobile = window.matchMedia("(max-width:700px)");
    半径がマスの幅に近いと内がわがつぶれて扇形になるので、幅の1.7倍以上を保つ。
    空はマスを置くぶんだけ細くして、盤面を上まで使う。 */
 const LAY_WIDE = {
-  vb: [1780, 864], corner: 100, skyH: 84, aspect: 2.06,
+  vb: [1780, 864], corner: 100, skyH: 84, artH: 250, aspect: 2.06,
   /* 1段目と4段目だけ左へ66のばしてある。こうすると3つのUターンがちょうど半分で
      切れて、切り口が水平になる（1段目には曲がり角が1つしかないぶんの帳尻） */
   pts: [[106,150],[1672,150],[1672,360],[172,360],[172,570],[1672,570],[1672,780],[106,780]],
   sub: true, tokenW: 52, tokenH: 66, fsBig: 21, fsSmall: 17,
 };
 const LAY_TALL = {
-  vb: [560, 1905], corner: 112, skyH: 78,
-  pts: [[92,140],[468,140],[468,380],[92,380],[92,620],[468,620],[468,860],[92,860],
-        [92,1100],[468,1100],[468,1340],[92,1340],[92,1580],[468,1580],[468,1820],[92,1820]],
+  /* スマホは上の余白を広めにとって、風景が見えるようにしてある */
+  vb: [560, 1965], corner: 112, skyH: 108, artH: 235,
+  pts: [[92,200],[468,200],[468,440],[92,440],[92,680],[468,680],[468,920],[92,920],
+        [92,1160],[468,1160],[468,1400],[92,1400],[92,1640],[468,1640],[468,1880],[92,1880]],
   sub: false, tokenW: 46, tokenH: 58, fsBig: 21, fsSmall: 18,
 };
 const HALFW = { choice: 66, start: 62, goal: 62 };
@@ -266,28 +267,30 @@ const SCENES = [
   }},
 ];
 function drawScenery(svg, lay) {
-  const [W, H] = lay.vb, skyH = lay.skyH;
+  const [W, H] = lay.vb, artH = lay.artH, cloudH = lay.skyH;
   const defs = el("defs");
+  /* 地平線(artH)のあたりで、空の色から地面の色へゆっくり変わるようにする */
   const grad = el("linearGradient", { id: "sky", x1: 0, y1: 0, x2: 0, y2: 1 });
-  [["0%", "#DDEFF9"], ["40%", "#EDF7F1"], ["100%", "#E6F3DC"]].forEach(([o, c]) =>
+  [["0%", "#DAEDFA"], [`${Math.round(artH / H * 62)}%`, "#E2F1F6"],
+   [`${Math.round(artH / H * 108)}%`, "#EAF5EE"], ["100%", "#E3F2D8"]].forEach(([o, c]) =>
     grad.appendChild(el("stop", { offset: o, "stop-color": c })));
   defs.appendChild(grad); svg.appendChild(defs);
   svg.appendChild(el("rect", { width: W, height: H, fill: "url(#sky)" }));
 
   const g = el("g", {}), add = (t, a) => g.appendChild(el(t, a));
-  add("rect", { x: 0, y: 0, width: W, height: skyH, fill: "#DCEEF9" });
-  /* 太陽と雲。地平線の上の細い帯におさめる */
-  add("circle", { cx: W * 0.93, cy: skyH * 0.32, r: skyH * 0.2, fill: "#FFE49A" });
+  /* 太陽と雲は、マスに隠れない上のほうに置く */
+  add("circle", { cx: W * 0.93, cy: cloudH * 0.34, r: cloudH * 0.22, fill: "#FFE49A" });
   [0.1, 0.34, 0.6, 0.78].forEach(f => {
-    const cx = W * f, cy = skyH * 0.24, rx = skyH * 0.3, ry = skyH * 0.12;
+    const cx = W * f, cy = cloudH * 0.26, rx = cloudH * 0.34, ry = cloudH * 0.13;
     add("ellipse", { cx, cy, rx, ry, fill: "#fff", opacity: .9 });
     add("ellipse", { cx: cx - rx * 0.6, cy: cy + ry * 0.5, rx: rx * 0.62, ry: ry * 0.8, fill: "#fff", opacity: .9 });
   });
-  /* 3つの風景。倍率は縦横おなじ＝形がつぶれない */
-  const k = skyH / 124;
+  /* 3つの風景。倍率は縦横おなじ＝形がつぶれない。
+     マスの下にもぐりこむ大きさで描く（タイルはこのあとに重ねる） */
+  const k = artH / 124;
   SCENES.forEach(sc => {
-    const cx = Math.min(W - sc.w * k - 4, Math.max(sc.w * k + 4, W * sc.cx));
-    const sg = el("g", { transform: `translate(${cx.toFixed(1)} ${skyH}) scale(${k.toFixed(3)})` });
+    const cx = Math.min(W - sc.w * k * 0.55, Math.max(sc.w * k * 0.55, W * sc.cx));
+    const sg = el("g", { transform: `translate(${cx.toFixed(1)} ${artH}) scale(${k.toFixed(3)})`, opacity: .92 });
     sc.draw((t, a) => sg.appendChild(el(t, a)));
     g.appendChild(sg);
   });
@@ -300,7 +303,7 @@ function drawScenery(svg, lay) {
   };
   const inset = lay.sub ? 46 : 28, n = lay.sub ? 4 : 8;
   for (let i = 0; i < n; i++) {
-    const ty = skyH + 50 + (H - skyH - 90) * (i + .5) / n;
+    const ty = artH + 30 + (H - artH - 70) * (i + .5) / n;
     tree(inset, ty, lay.sub ? 1 : .8);
     tree(W - inset, ty + 34, lay.sub ? .9 : .75);
   }
@@ -615,14 +618,9 @@ function focusSquare(pos) {
 }
 
 /* ---------- プレイヤー一覧（画面上） ---------- */
-function renderStrip() {
-  const s = $("playersStrip");
-  s.innerHTML = "";
-  G.players.forEach((p, i) => {
-    const c = document.createElement("div");
-    c.className = "pcard" + (i === G.turn ? " now" : "") + (p.done ? " done" : "")
-      + (p.connected ? "" : " off") + (p.left ? " left" : "");
-    c.innerHTML = `
+/* 画面上のプレイヤーカードの中身。トビラの画面でも同じ見た目を使う */
+function playerCardBody(p) {
+  return `
       <div class="av" style="${faceBg(p)}; border-color:${p.color}"></div>
       <div style="min-width:0; flex:1">
         <div class="nm">${p.name}${p.id === MYPID ? `<span class="mine-badge">${ja() ? "あなた" : "you"}</span>` : ""}
@@ -633,6 +631,15 @@ function renderStrip() {
           <span class="m3">♥${p.happy}</span>
         </div>
       </div>`;
+}
+function renderStrip() {
+  const s = $("playersStrip");
+  s.innerHTML = "";
+  G.players.forEach((p, i) => {
+    const c = document.createElement("div");
+    c.className = "pcard" + (i === G.turn ? " now" : "") + (p.done ? " done" : "")
+      + (p.connected ? "" : " off") + (p.left ? " left" : "");
+    c.innerHTML = playerCardBody(p);
     s.appendChild(c);
   });
 }
@@ -828,61 +835,95 @@ function renderPending() {
       </div>`, true);
   }
   else if (pd.kind === "choice") {
+    /* 開くかどうか・いくらかかるかは、押すまで伏せておく。
+       「どれを選びたいか」を先に考えてもらうため。押すと中身が開いて、最終確認になる */
     const p = pd.actor;
     const openN = (pd.states || []).filter(x => x === "open").length;
-    /* 死別・干ばつなどのライフイベントは「トビラ」として数えないので、
-       トビラのラベルも出さない（数える対象と見た目をずらさない） */
+    /* 死別・干ばつなどのライフイベントは「トビラ」として数えないので、ラベルも出さない */
     const isDoor = pd.type !== "heavy";
-    const doors = R.shuffle(pd.opts.map((_, i) => i)).map(i => {
-      const o = pd.opts[i], st = pd.states[i];
-      if (st === "unseen") return `<button class="door unseen" disabled>
-          ${isDoor ? `<span class="d-badge unseen">${ic("eye", "s")}${ja() ? "見えないトビラ" : "A door you can't see"}</span>` : ""}
-          <span class="d-title">？？？</span>
-          <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></button>`;
-      const key2 = reqLabel(p, o), ok = st === "open";
+    const stuck = openN === 0;
+    const order = R.shuffle(pd.opts.map((_, i) => i));
+    const head = `<div class="m-head">
+        ${tagChip(pd.def.heavy ? "heavy" : "choice")}
+        <h2>${L(pd.def.title)}</h2>
+      </div>`;
+    const me = G.players.find(x => x.id === pd.for);
+
+    /* --- 一覧：どれも同じ見た目。中身はホバー（スマホでは常時）で読める --- */
+    const listHtml = () => `<div class="m-body">
+        ${me ? `<div class="pcard now m-pcard">${playerCardBody(me)}</div>` : ""}
+        <p class="m-lead">${L(pd.def.body)}</p>
+        <div class="door-list">${order.map(i => {
+          const o = pd.opts[i];
+          if (pd.states[i] === "unseen") return `<button class="door unseen" disabled>
+              ${isDoor ? `<span class="d-badge unseen">${ic("eye", "s")}${ja() ? "見えないトビラ" : "A door you can't see"}</span>` : ""}
+              <span class="d-title">？？？</span>
+              <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></button>`;
+          return `<button class="door pick" data-i="${i}" ${mine ? "" : "disabled"}>
+              ${isDoor ? `<span class="d-badge plain">${ic("door", "s")}${ja() ? "トビラ" : "A door"}</span>` : ""}
+              <span class="d-title">${L(o.t)}</span>
+              <span class="d-more">
+                <span class="d-desc">${L(o.d)}</span>
+                ${o.cons ? `<span class="d-cons">${L(o.cons)}</span>` : ""}
+              </span></button>`;
+        }).join("")}</div>
+        ${mine ? `<p class="pick-hint">${ja()
+          ? "えらびたいトビラを押すと、開けられるかどうかが分かります。"
+          : "Press the door you want — then you'll find out if it opens."}</p>` : waitingNote(actor.name)}
+      </div>`;
+
+    /* --- 押したあと：カギと金額を開いて、最後にもう一度たずねる --- */
+    const confirmHtml = i => {
+      const o = pd.opts[i], ok = pd.states[i] === "open";
+      const key2 = reqLabel(p, o);
       const em = R.effectiveMoneyReq(p, o), raw = o.fx.money || 0, efx = R.effectiveMoneyFx(p, o);
       const cut = efx !== raw, redundant = o.req.money && efx === -em;
       const loan = o.special === "shogakukin" && !(p.shienDiscount || p.perk === "shienPro");
       const cost = ((efx || cut) && !redundant)
-        ? `<span class="d-cost ${efx < 0 ? "minus" : "plus"}">${ic("coin", "s")} ${ja() ? "おかね" : "Money"} ${cut ? `<s>${fm(raw)}</s>→` : ""}${efx > 0 ? "+" : ""}${fm(efx)}${loan ? (ja() ? "＋返済" : " + repayment") : ""}</span>` : "";
-      /* 何が足りないのかを取りちがえないように、理由ごとに書きわける。
-         大学のカギだけは、いまさら取りに行けないもの */
+        ? `<div class="d-cost ${efx < 0 ? "minus" : "plus"}">${ic("coin", "s")} ${ja() ? "おかね" : "Money"} ${cut ? `<s>${fm(raw)}</s>→` : ""}${efx > 0 ? "+" : ""}${fm(efx)}${loan ? (ja() ? "＋これから返済" : " + repayment from now on") : ""}</div>` : "";
+      /* 何が足りないのかを取りちがえないように、理由ごとに書きわける */
       const short = (o.req.univ && !p.univ)
-        ? (ja() ? "（大学に行っていない…）" : " (no degree…)")
+        ? (ja() ? "大学に行っていないので、この道はつづいていない" : "No degree — this road doesn't continue")
         : (o.req.maxMoney != null && p.money >= o.req.maxMoney
-          ? (ja() ? "（対象外…）" : " (not eligible…)") : (ja() ? "（たりない…）" : " (not enough…)"));
-      return `<button class="door ${ok ? "open" : "locked"}" data-i="${i}" ${ok && mine ? "" : "disabled"}>
+          ? (ja() ? "いまのあなたは対象外だった" : "You're not eligible") : (ja() ? "カギが足りない" : "Not enough keys"));
+      return `<div class="m-body">
+        <div class="c-card ${ok ? "ok" : "ng"}">
           ${isDoor ? `<span class="d-badge ${ok ? "open" : "lock"}">${ic(ok ? "door" : "lock", "s")}${ok
             ? (ja() ? "開けられるトビラ" : "A door you can open")
             : (ja() ? "カギが足りないトビラ" : "A door you can't open")}</span>` : ""}
-          <span class="d-title">${L(o.t)}</span>
-          <span class="d-desc">${L(o.d)}</span>
-          ${o.cons ? `<span class="d-cons">${L(o.cons)}</span>` : ""}
-          ${key2 ? `<span class="d-key">${ic(ok ? "door" : "lock", "s")}${ja() ? "カギ：" : "Key: "}${key2}${ok ? "" : short}</span>` : ""}${cost}
-        </button>`;
-    }).join("");
-    const stuck = openN === 0;
-    openModal(`<div class="m-head">
-        ${tagChip(pd.def.heavy ? "heavy" : "choice")}
-        <h2>${L(pd.def.title)}</h2>
-        <p class="m-sub">${ja()
-          ? `${p.name}・${R.AGES[p.pos]}歳 ／ おかね ${fm(p.money)} ／ まなび ★${p.learn}`
-          : `${p.name} · Age ${R.AGES[p.pos]} / Money ${fm(p.money)} / Learn ★${p.learn}`}</p>
-      </div>
-      <div class="m-body">
-        <p class="m-lead">${L(pd.def.body)}</p>
-        ${!isDoor ? "" : `<div class="door-note">${ic("door", "s")}<span>${ja()
-          ? `この下のひとつひとつが「<b>トビラ</b>」。いま開けられるのは <b>${openN}枚</b>。<br>開けたトビラの数は、25歳のけっかで数えます。`
-          : `Each option below is one <b>door</b>. <b>${openN}</b> will open right now.<br>The doors you opened are counted in the results at 25.`}</span></div>`}
-        <div class="door-list">${doors}</div>
-        ${stuck && mine ? `<div class="m-note" style="margin-top:14px">${ja() ? "開けられるトビラが、ひとつもなかった…。" : "Not a single door would open…"}</div>
-          <button class="m-btn" id="mPass">${ja() ? "今回は見送る" : "Pass this time"}</button>` : ""}
-        ${mine ? "" : waitingNote(actor.name)}
-      </div>`);
-    if (stuck && mine && $("mPass")) $("mPass").onclick = () => send({ t: "choose", i: -1, pass: true });
-    if (mine) document.querySelectorAll("#modalBox .door:not(:disabled)").forEach(b => {
-      b.onclick = () => send({ t: "choose", i: +b.dataset.i });
-    });
+          <div class="c-title">${L(o.t)}</div>
+          <div class="d-desc">${L(o.d)}</div>
+          ${o.cons ? `<div class="d-cons">${L(o.cons)}</div>` : ""}
+          ${key2 ? `<div class="c-key">${ja() ? "カギ：" : "Key: "}${key2}
+            <span class="c-now">${ja() ? `いまのあなた：おかね ${fm(p.money)}／まなび ★${p.learn}` : `You have: ${fm(p.money)} / ★${p.learn}`}</span></div>` : ""}
+          ${cost}
+        </div>
+        ${ok
+          ? `<p class="c-ask">${ja() ? "このトビラを開けますか？" : "Open this door?"}</p>
+             <button class="m-btn" id="mYes">${ja() ? "はい、このトビラを開ける" : "Yes, open it"}</button>
+             <button class="m-btn ghost" id="mBack">${ja() ? "やっぱり、ほかのトビラを見る" : "Back to the other doors"}</button>`
+          : `<p class="c-ask ng">${ic("lock", "s")} ${short}${ja() ? "……このトビラは開かなかった。" : " — this door didn't open."}</p>
+             <button class="m-btn" id="mBack">${ja() ? "ほかのトビラを見る" : "Back to the other doors"}</button>
+             ${stuck ? `<button class="m-btn ghost" id="mPass">${ja() ? "どれも開かない。今回は見送る" : "None will open — pass this time"}</button>` : ""}`}
+      </div>`;
+    };
+
+    const bind = () => {
+      if (!mine) return;
+      document.querySelectorAll("#modalBox .door.pick:not(:disabled)").forEach(b => {
+        b.onclick = () => { paint(confirmHtml(+b.dataset.i), +b.dataset.i); };
+      });
+      if ($("mBack")) $("mBack").onclick = () => paint(listHtml());
+      if ($("mPass")) $("mPass").onclick = () => send({ t: "choose", i: -1, pass: true });
+    };
+    const paint = (body, pickI) => {
+      $("modalBox").innerHTML = head + body;
+      $("modalBox").scrollTop = 0;
+      bind();
+      if (mine && pickI != null && $("mYes")) $("mYes").onclick = () => send({ t: "choose", i: pickI });
+    };
+    openModal(head + listHtml());
+    bind();
   }
   else if (pd.kind === "goal") {
     /* 25歳では返し終わらない。清算せず、背負ったまま先へ進む */
