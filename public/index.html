@@ -13,6 +13,7 @@
   --pink:#F4879F; --gold:#FBD96B; --btn:#5B7FA8; --btn-d:#43617F;
   --money:#D9A32B; --learn:#4E8FC0; --happy:#E4708F;
   --ok:#86D9A5; --lock:#FFC98C; --unseen:#B7A6EA;
+  --wrap:1180px;
   --sh:0 4px 16px rgba(63,82,102,.10);
   --sh-s:0 2px 8px rgba(63,82,102,.10);
 }
@@ -71,10 +72,15 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 .wait-row .st{font-size:12px; font-weight:700; color:var(--sub);}
 
 /* ---------- ゲーム画面 ---------- */
-#game{padding:0 0 108px;}
+#game{padding:0 0 96px;}
+/* PCは1画面におさめる。盤面は横:縦 = 2.06 なので、残りの高さから横幅を決める。
+   ヘッダー・サイコロ・余白でおよそ 230px ぶんを引いている */
+@media (min-width:701px){
+  :root{--wrap:min(1700px, calc((100vh - 244px) * 2.06 + 24px));}
+}
 .sticky-head{position:sticky; top:0; z-index:40; background:var(--page);
   padding:10px 12px 8px; box-shadow:0 8px 12px -10px rgba(63,82,102,.3);}
-.topbar{display:flex; align-items:center; gap:9px; max-width:1180px; margin:0 auto 9px;}
+.topbar{display:flex; align-items:center; gap:9px; max-width:var(--wrap); margin:0 auto 9px;}
 .topbar .logo{font-weight:900; font-size:17px; letter-spacing:.08em; color:var(--pink); flex:none;}
 .turn-pill{flex:1; min-width:0; display:flex; align-items:center; gap:9px; background:#FFF1F5;
   border-radius:999px; padding:6px 14px; font-weight:900; font-size:clamp(13px,2.4vw,15px);
@@ -87,7 +93,7 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
   place-items:center; color:var(--btn); box-shadow:var(--sh-s); flex:none;}
 .help-btn.card-btn{width:auto; padding:0 13px; display:inline-flex; gap:5px;}
 .card-btn .cb-lbl{font-size:12.5px; font-weight:900; color:var(--ink);}
-.players-strip{display:flex; gap:8px; overflow-x:auto; max-width:1180px; margin:0 auto;
+.players-strip{display:flex; gap:8px; overflow-x:auto; max-width:var(--wrap); margin:0 auto;
   padding:2px 2px 6px;}
 .pcard{flex:1 0 156px; background:var(--card); border-radius:15px; padding:8px 11px;
   box-shadow:var(--sh-s); display:flex; gap:9px; align-items:center; opacity:.72; transition:opacity .2s;}
@@ -101,7 +107,7 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 .m1{color:var(--money);} .m2{color:var(--learn);} .m3{color:var(--happy);}
 .mine-badge{font-size:10px; font-weight:900; color:#fff; background:var(--pink);
   border-radius:999px; padding:0 7px;}
-.board-wrap{max-width:1180px; margin:10px auto 0; padding:0 12px;}
+.board-wrap{max-width:var(--wrap); margin:10px auto 0; padding:0 12px;}
 #board{display:block; width:100%; height:auto; border-radius:18px;}
 .controls{position:fixed; left:0; right:0; bottom:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom));
   display:flex; justify-content:center; z-index:50; pointer-events:none;

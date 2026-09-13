@@ -154,9 +154,9 @@ const mqMobile = window.matchMedia("(max-width:700px)");
    半径がマスの幅に近いと内がわがつぶれて扇形になるので、幅の1.7倍以上を保つ。
    空はマスを置くぶんだけ細くして、盤面を上まで使う。 */
 const LAY_WIDE = {
-  vb: [1160, 965], corner: 112, skyH: 89,
-  pts: [[124,155],[1036,155],[1036,395],[124,395],[124,635],[1036,635],[1036,875],[124,875]],
-  sub: true, tokenW: 48, tokenH: 62, fsBig: 19, fsSmall: 15,
+  vb: [1780, 864], corner: 100, skyH: 84, aspect: 2.06,
+  pts: [[140,150],[1640,150],[1640,360],[140,360],[140,570],[1640,570],[1640,780],[140,780]],
+  sub: true, tokenW: 52, tokenH: 66, fsBig: 21, fsSmall: 17,
 };
 const LAY_TALL = {
   vb: [560, 1905], corner: 112, skyH: 78,
@@ -390,17 +390,11 @@ function renderBoard() {
     const poly = left.concat(right);
     const big = sq.t === "choice" || sq.t === "start" || sq.t === "goal";
     const tTxt = L(sq.name) || L(m.label);
-    /* このマスが曲がりの上にあるか。大きく曲がるマスは横に使える幅がせまいので、
-       説明文まで入れると字が小さくなりすぎる。年齢だけにする */
-    const v0 = [mid[1][0] - mid[0][0], mid[1][1] - mid[0][1]];
-    const v1 = [mid[M][0] - mid[M-1][0], mid[M][1] - mid[M-1][1]];
-    const cos = (v0[0]*v1[0] + v0[1]*v1[1]) / ((Math.hypot(v0[0],v0[1]) * Math.hypot(v1[0],v1[1])) || 1);
-    const curvy = cos < 0.64;                           /* 約50度より大きく曲がる */
     /* 年齢はトビラ・スタート・ゴールだけ。せまい画面では説明文は出さない */
     const ageTxt = ja() ? `${R.AGES[i]}歳` : `Age ${R.AGES[i]}`;
-    const sTxt = big
-      ? (curvy ? ageTxt : ageTxt + (L(sq.sub) ? "・" + L(sq.sub) : ""))
-      : ((lay.sub && !curvy) ? (L(sq.sub) || "") : "");
+    let sTxt = big
+      ? ageTxt + (L(sq.sub) ? "・" + L(sq.sub) : "")
+      : (lay.sub ? (L(sq.sub) || "") : "");
     /* アイコン・見出し・説明の位置（かたまりの中心から見た相対位置）。
        上下おなじ余白になるよう、説明のあるなしでずらす */
     const dy = sTxt ? 5 : 14;
@@ -408,23 +402,39 @@ function renderBoard() {
     if (sTxt) offs.push((big ? 32 : 28) + dy);
     const spot = bestLabelSpot(poly, offs)
       || { x: mid[Math.floor(mid.length / 2)][0], y: mid[Math.floor(mid.length / 2)][1], w: 2 * hw };
-    /* 文字はこの幅におさめる。曲がったマスでも白いフチをまたがない */
-    const room = Math.max(46, spot.w - 26);
-    const fit = (txt, base) => {
+    /* 1行ごとに、その高さで使える幅を測る。曲がったマスでも白いフチをまたがない。
+       まとめて一番せまいところに合わせると、曲がりのマスだけ字が潰れてしまう */
+    const roomAt = ys => {
+      let room = Infinity;
+      for (const y of ys) {
+        const sp = widestSpan(poly, y);
+        room = Math.min(room, sp ? 2 * Math.min(spot.x - sp[0], sp[1] - spot.x) : 0);
+      }
+      return Math.max(46, room - 24);
+    };
+    const fit = (txt, base, ys) => {
       const w = [...txt].reduce((s2, ch) => s2 + (ch.charCodeAt(0) > 0x2E80 ? 1 : 0.55), 0);
-      return Math.max(9, Math.min(base, room / Math.max(1, w)));
+      return Math.min(base, roomAt(ys) / Math.max(1, w));
     };
     gLabels.appendChild(tileIcon(sq.t, spot.x, spot.y + offs[0], m.chip));
-    const title = el("text", { x: spot.x, y: spot.y + offs[1], "text-anchor": "middle",
-      "font-size": fit(tTxt, big ? lay.fsBig : lay.fsSmall), "font-weight": 900, fill: m.ink });
+    const yT = spot.y + offs[1];
+    const title = el("text", { x: spot.x, y: yT, "text-anchor": "middle",
+      "font-size": Math.max(10, fit(tTxt, big ? lay.fsBig : lay.fsSmall, [yT, yT - 14])),
+      "font-weight": 900, fill: m.ink });
     title.textContent = tTxt;
     gLabels.appendChild(title);
     if (sTxt) {
-      const sub = el("text", { x: spot.x, y: spot.y + offs[2], "text-anchor": "middle",
-        "font-size": fit(sTxt, big ? (lay.sub ? 11.5 : 12.5) : 10.5), "font-weight": 700,
-        fill: big ? m.ink : "#6E7E8C", opacity: big ? .92 : 1 });
-      sub.textContent = sTxt;
-      gLabels.appendChild(sub);
+      const yS = spot.y + offs[2], probes = [yS, yS - 9];
+      let fs = fit(sTxt, big ? (lay.sub ? 12 : 12.5) : 11, probes);
+      /* 曲がりの上で幅が足りないときは、トビラは年齢だけ／ほかのマスは説明を出さない */
+      if (fs < 9.8 && big && sTxt !== ageTxt) { sTxt = ageTxt; fs = fit(sTxt, 12, probes); }
+      if (fs >= 9.8) {
+        const sub = el("text", { x: spot.x, y: yS, "text-anchor": "middle",
+          "font-size": fs, "font-weight": 700,
+          fill: big ? m.ink : "#6E7E8C", opacity: big ? .92 : 1 });
+        sub.textContent = sTxt;
+        gLabels.appendChild(sub);
+      }
     }
     band[i] = poly;      /* 章のラベルを置くときに、どこが空いているかを測るのに使う */
   });
