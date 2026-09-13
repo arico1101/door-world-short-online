@@ -21,6 +21,7 @@ let ws = null, G = null, YOU = null, MYPID = null, ROOM = null, retry = 0;
 let shown = {};            /* コマの表示位置（1マスずつ動かすため） */
 let lastKey = "";          /* 同じモーダルを描き直さないための署名 */
 let animTimer = null;
+let previewMode = false;
 
 function myId() {
   /* 同じ端末の別タブでも別プレイヤーになれるよう、まずタブ内(sessionStorage)を見る。
@@ -1327,14 +1328,82 @@ function renderRules(page) {
 /* 開発用: ブラウザから内部状態をのぞくためのフック */
 setInterval(() => {
   try {
-    if (G && G.pending && !isOpen() && !animTimer && !diceBusy) renderPending();
+    if (!previewMode && G && G.pending && !isOpen() && !animTimer && !diceBusy) renderPending();
   } catch (e) {}
 }, 1500);
+
+function previewGame({ screen, state, you, pid, room, lang: previewLang, modal, modalOptions = {}, dice, diceValue } = {}) {
+  previewMode = true;
+  if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+  if (spinTimer) { clearInterval(spinTimer); spinTimer = null; }
+  diceBusy = false;
+  shown = {};
+  lastKey = "";
+  closeModal();
+  closeHost();
+  $("diceStage").classList.remove("on");
+
+  const phases = {
+    wait: "lobby", waiting: "lobby", cards: "cards", card: "cards",
+    game: "play", board: "play", play: "play", result: "result",
+  };
+  G = state ? structuredClone(state) : null;
+  if (G && phases[screen]) G.phase = phases[screen];
+  YOU = you ? structuredClone(you) : null;
+  MYPID = pid || (YOU && YOU.id) || (G && G.players && G.players[0] && G.players[0].id) || null;
+  ROOM = room || null;
+  if (previewLang === "ja" || previewLang === "en") lang = previewLang;
+
+  if (screen === "lobby" || !G) {
+    G = null;
+    showScreen("lobby");
+    applyLang();
+    $("nameInput").value = modalOptions.name || "";
+    $("codeInput").value = modalOptions.code || "";
+    $("connMsg").textContent = L(modalOptions.error) || "";
+    return;
+  }
+
+  applyLang();
+  render();
+
+  const command = typeof modal === "string" ? { type: modal } : (modal || {});
+  switch (command.type) {
+    case "card": showCard(true); break;
+    case "rules": renderRules(command.page ?? modalOptions.rulePage ?? 0); break;
+    case "host": renderHostPanel(); break;
+    case "choiceConfirm": {
+      const index = command.index ?? modalOptions.index;
+      const choice = document.querySelector(`#modalBox .door.pick[data-i="${Number(index)}"]`);
+      if (choice) choice.click();
+      break;
+    }
+    case "allDoors":
+    case "all-doors": showAllDoorsModal(); break;
+    case "reveal": showRevealModal(command.pid || modalOptions.revealPid || MYPID); break;
+  }
+
+  const die = $("bigDie");
+  const diceMode = dice || command.dice || modalOptions.dice;
+  const previewDiceValue = diceValue ?? command.diceValue ?? modalOptions.diceValue;
+  if (diceMode === "rolling") startBigDice();
+  else if (diceMode === "landed") {
+    if (spinTimer) { clearInterval(spinTimer); spinTimer = null; }
+    diceBusy = false;
+    $("diceStage").classList.add("on");
+    die.classList.remove("roll");
+    die.classList.add("land");
+    const value = Math.min(6, Math.max(1, Number(previewDiceValue) || 1));
+    diceFace(value, die);
+    $("dieMsg").textContent = ja() ? `${value} マスすすむ！` : `Move ${value}!`;
+  }
+}
 
 window.__tobira = {
   get state(){ return G; }, get you(){ return YOU; }, get pid(){ return MYPID; },
   get anim(){ return animTimer; }, get lastKey(){ return lastKey; },
   get wsState(){ return ws && ws.readyState; }, get room(){ return ROOM; },
+  preview: previewGame,
   msgs: 0,
 };
 

@@ -11,6 +11,17 @@ npm install
 npx wrangler dev       # http://localhost:8787
 ```
 
+画面だけを状態別に確認するときはStorybookを使う。ゲームへの接続や手動プレイは不要。
+
+```bash
+npm run storybook       # http://localhost:6006
+npm run build-storybook # 静的ビルドの確認
+```
+
+Storybookには、ロビー、待機室、盤面、家庭カード、トビラ、イベント、観戦、結果、
+ネタバラシ、ヘルプ、進行役メニューを状態別に収録している。ツールバーのLanguageで
+日本語／英語を、ViewportでPC／スマートフォン表示を切り替えられる。
+
 姉妹プロジェクト（どれも現役・別リポジトリ。**この短縮版の変更を持ちこまないこと**）：
 
 | | 場所 | 何か |
