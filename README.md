@@ -27,13 +27,6 @@ PRを閉じるとWorkerと関連リソースは自動削除される。
 Durable Objectsを使うWorkerはCloudflareのVersion Preview URLに対応していないため、
 PRごとの独立したWorkerとしてデプロイしている。
 
-リポジトリのActions secretsに以下を設定すること。
-
-- `CLOUDFLARE_API_TOKEN`: 対象アカウントのWorkers Scriptsを編集できるAPIトークン
-- `CLOUDFLARE_ACCOUNT_ID`: 対象のCloudflareアカウントID
-
-ForkからのPRにはCloudflareの認証情報を渡さず、Previewを作成しない。
-
 Storybookには、ロビー、待機室、盤面、家庭カード、トビラ、イベント、観戦、結果、
 ネタバラシ、ヘルプ、進行役メニューを状態別に収録している。ツールバーのLanguageで
 日本語／英語を、ViewportでPC／スマートフォン表示を切り替えられる。
