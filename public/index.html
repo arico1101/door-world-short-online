@@ -89,10 +89,12 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
   background-color:#fff; background-size:cover; background-position:center 16%;}
 .turn-pill .tp-txt{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .turn-pill .tp-off{flex:none; font-size:.76em; color:var(--happy);}
-.help-btn{width:36px; height:36px; border-radius:50%; background:var(--card); display:grid;
-  place-items:center; color:var(--btn); box-shadow:var(--sh-s); flex:none;}
-.help-btn.card-btn{width:auto; padding:0 13px; display:inline-flex; gap:5px;}
-.card-btn .cb-lbl{font-size:12.5px; font-weight:900; color:var(--ink);}
+.help-btn{height:40px; border-radius:999px; background:var(--card); display:inline-flex;
+  align-items:center; justify-content:center; gap:6px; padding:0 15px; color:var(--btn);
+  box-shadow:var(--sh-s); flex:none;}
+.help-btn .ic{width:21px; height:21px;}
+.help-btn .lbl{font-size:12.5px; font-weight:900; color:var(--ink); white-space:nowrap;}
+.help-btn:active{transform:translateY(1px);}
 .players-strip{display:flex; gap:8px; overflow-x:auto; max-width:var(--wrap); margin:0 auto;
   padding:2px 2px 6px;}
 .pcard{flex:1 0 156px; background:var(--card); border-radius:15px; padding:8px 11px;
@@ -123,6 +125,24 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 .dice-face i{width:6px; height:6px; border-radius:50%; background:var(--pink);}
 .dice-face.spin{animation:diceSpin .4s linear infinite;}
 @keyframes diceSpin{0%,100%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.12)}}
+
+/* ---------- サイコロの演出 ---------- */
+.dice-stage{position:fixed; inset:0; z-index:90; display:none; flex-direction:column;
+  align-items:center; justify-content:center; gap:18px; background:rgba(242,249,253,.72);
+  backdrop-filter:blur(2px); pointer-events:none;}
+.dice-stage.on{display:flex;}
+.big-die{width:min(160px,38vw); aspect-ratio:1; background:#fff; border-radius:26px;
+  box-shadow:0 10px 28px rgba(63,82,102,.22), inset 0 -6px 0 rgba(63,82,102,.07);
+  display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+  padding:16px; gap:4px;}
+.big-die span{display:grid; place-items:center;}
+.big-die i{width:22%; aspect-ratio:1; min-width:12px; border-radius:50%; background:var(--pink);}
+.big-die.roll{animation:bigRoll .45s cubic-bezier(.4,0,.6,1) infinite;}
+.big-die.land{animation:bigLand .45s cubic-bezier(.2,1.4,.4,1);}
+@keyframes bigRoll{0%{transform:rotate(-14deg) scale(.94)}50%{transform:rotate(14deg) scale(1.06)}100%{transform:rotate(-14deg) scale(.94)}}
+@keyframes bigLand{0%{transform:scale(1.28)}60%{transform:scale(.94)}100%{transform:scale(1)}}
+.die-msg{font-size:clamp(19px,4.6vw,26px); font-weight:900; color:var(--ink); letter-spacing:.06em;
+  min-height:1.6em;}
 
 /* ---------- モーダル ---------- */
 .overlay{position:fixed; inset:0; background:rgba(63,82,102,.42); z-index:100;
@@ -170,6 +190,8 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 .door-note b{color:#C4507A;}
 .door .d-title{display:block; font-size:15px; font-weight:900; line-height:1.45;}
 .door .d-desc{display:block; font-size:11.5px; font-weight:700; color:#6E7E8C; margin-top:3px; line-height:1.65;}
+.door .d-cons{display:block; font-size:11.5px; font-weight:700; color:#B4707A; margin-top:4px; line-height:1.65;}
+.door.locked .d-cons{color:#BC8A8A;} .door.unseen .d-cons{display:none;}
 .door .d-key{display:flex; font-size:11.5px; font-weight:900; margin-top:7px;
   align-items:center; gap:4px; flex-wrap:wrap;}
 .door.open{background:#FDF3D9;} .door.open .d-key{color:#A9801F;}
@@ -227,6 +249,17 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
   background:#F7FBFD; border-radius:14px; padding:12px 14px;}
 .fam-asa{font-size:11.5px; font-weight:700; color:#7C8B99; margin-top:9px; line-height:1.75;}
 .fam-asa b{color:#C98A3C;}
+/* カードの中の「いまのステータス」と「トビラの記録」 */
+.now-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+.ns{border-radius:13px; padding:8px 10px 9px;}
+.ns.money{background:#FFF4DC;} .ns.learn{background:#E7F2FC;} .ns.happy{background:#FDECF2;}
+.ns .k{display:flex; align-items:center; gap:4px; font-size:10.5px; font-weight:900;}
+.ns.money .k{color:#B98A2A;} .ns.learn .k{color:#3F7EAC;} .ns.happy .k{color:#CE6288;}
+.ns .v{font-size:17px; font-weight:900; line-height:1.4;}
+.now-doors{margin-top:9px; background:#F7FBFD; border-radius:13px; padding:9px 12px;}
+.now-doors .k{display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:900; color:var(--sub);}
+.now-doors .dl{display:flex; flex-wrap:wrap; gap:4px 12px; font-size:11.5px; font-weight:700; margin-top:4px;}
+.now-doors .lo{color:#4CA872;} .now-doors .ll{color:#C98A3C;} .now-doors .lu{color:#7E6BC4;}
 .fam-stats{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:13px;}
 .fs{background:#F7FBFD; border-radius:13px; padding:8px 12px;}
 .fs .k{font-size:10.5px; font-weight:900; color:var(--sub);}
@@ -297,9 +330,6 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 .doorbar-label{font-size:11.5px; font-weight:900; color:var(--sub); margin-top:7px; line-height:1.7;}
 .doorbar-label .lo{color:#4CA872;} .doorbar-label .ll{color:#C98A3C;} .doorbar-label .lu{color:#7E6BC4;}
 .rv-btn{margin-top:11px; font-size:13px;}
-.insight{background:var(--card); border-radius:22px; padding:22px; margin-top:24px; line-height:2;
-  font-size:14px; font-weight:700; color:#54677A; box-shadow:var(--sh);}
-.insight b{color:#D4547A;}
 .res-btns{text-align:center; margin-top:24px;}
 
 /* ネタバラシ・トビラ一覧 */
@@ -357,11 +387,13 @@ body.host-open #overlay{display:none !important;}
 
 @media (max-width:640px){
   .topbar .logo{display:none;}
-  .card-btn .cb-lbl{display:none;}
-  .help-btn.card-btn{width:36px; padding:0;}
   .pcard{flex:1 0 138px; padding:7px 9px;}
   .pcard .av{width:32px; height:32px;}
   #game{padding-bottom:96px;}
+}
+@media (max-width:860px){
+  .help-btn .lbl{display:none;}
+  .help-btn{width:40px; padding:0;}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
 </style>
@@ -388,7 +420,7 @@ body.host-open #overlay{display:none !important;}
 <symbol id="ic-die" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="8.4" cy="8.4" r="1.7" fill="currentColor"/><circle cx="15.6" cy="15.6" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/></symbol>
 <symbol id="ic-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="8.5" cy="11" r="2.2" fill="currentColor"/><path d="M5 16.5c.7-1.6 5-1.6 5.8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.5 10h4.5M14.5 13.6h4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 <symbol id="ic-help" viewBox="0 0 24 24"><path d="M9 9a3 3 0 1 1 3.6 2.9c-.8.2-1.1.8-1.1 1.6v.6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><circle cx="11.6" cy="17.6" r="1.5" fill="currentColor"/></symbol>
-<symbol id="ic-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 1 5.3 5.3l-8 8-2.6-2.6z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M8 3.5 4 7.5l3 3 4-4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+<symbol id="ic-tools" viewBox="0 0 24 24"><path d="M10.1 2.8h3.8l.4 2.4 2 1.2 2.3-.9 1.9 3.3-1.9 1.5v2.4l1.9 1.5-1.9 3.3-2.3-.9-2 1.2-.4 2.4h-3.8l-.4-2.4-2-1.2-2.3.9-1.9-3.3 1.9-1.5v-2.4L3.5 8.8l1.9-3.3 2.3.9 2-1.2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
 <symbol id="ic-cap" viewBox="0 0 24 24"><path d="M12 4 22 9l-10 5L2 9z" fill="currentColor"/><path d="M6 11.4V16c0 1.6 2.7 2.8 6 2.8s6-1.2 6-2.8v-4.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
 <symbol id="ic-check" viewBox="0 0 24 24"><path d="M4 12.5 9.5 18 20 6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 6.8V12l3.6 2.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
@@ -448,9 +480,9 @@ body.host-open #overlay{display:none !important;}
     <div class="topbar">
       <div class="logo" id="logoTxt">トビラ</div>
       <div class="turn-pill" id="turnPill"></div>
-      <button class="help-btn" id="hostBtn" aria-label="host tools" style="display:none"><svg class="ic"><use href="#ic-tools"/></svg></button>
-      <button class="help-btn" id="helpBtnGame" aria-label="how to play"><svg class="ic"><use href="#ic-help"/></svg></button>
-      <button class="help-btn card-btn" id="cardBtn" aria-label="my family card"><svg class="ic"><use href="#ic-card"/></svg><span class="cb-lbl" id="cardBtnLabel">カード</span></button>
+      <button class="help-btn" id="hostBtn" style="display:none"><svg class="ic"><use href="#ic-tools"/></svg><span class="lbl" id="hostBtnLabel">進行</span></button>
+      <button class="help-btn" id="helpBtnGame"><svg class="ic"><use href="#ic-help"/></svg><span class="lbl" id="helpBtnLabel">あそびかた</span></button>
+      <button class="help-btn" id="cardBtn"><svg class="ic"><use href="#ic-card"/></svg><span class="lbl" id="cardBtnLabel">じぶんのカード</span></button>
     </div>
     <div class="players-strip" id="playersStrip"></div>
   </div>
@@ -473,10 +505,15 @@ body.host-open #overlay{display:none !important;}
     <div style="text-align:center; margin-bottom:10px">
       <button class="chip-btn" id="allDoorsBtn"></button>
     </div>
-    <div class="insight" id="insightBox"></div>
     <div class="res-btns"><button class="big-btn" id="againBtn"></button></div>
   </div>
 </section>
+
+<!-- サイコロの演出（画面中央） -->
+<div class="dice-stage" id="diceStage" aria-hidden="true">
+  <div class="big-die" id="bigDie"></div>
+  <div class="die-msg" id="dieMsg"></div>
+</div>
 
 <div class="overlay" id="overlay">
   <div class="modal" id="modalBox" role="dialog" aria-modal="true"></div>

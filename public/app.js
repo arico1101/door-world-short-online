@@ -88,23 +88,43 @@ $("claimBtn").onclick = () => send({ t: "claimHost" });
 /* ---------- サイコロ ---------- */
 const PIPS = {1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
 let spinTimer = null;
-function diceFace(n) {
+function diceFace(n, box) {
   const on = new Set(PIPS[n] || []);
-  $("diceFace").innerHTML = Array.from({ length: 9 }, (_, i) => on.has(i) ? "<span><i></i></span>" : "<span></span>").join("");
+  (box || $("diceFace")).innerHTML = Array.from({ length: 9 }, (_, i) => on.has(i) ? "<span><i></i></span>" : "<span></span>").join("");
 }
-function spinDice() {
-  if (spinTimer) return;
-  $("diceFace").classList.add("spin");
-  spinTimer = setInterval(() => diceFace(1 + Math.floor(Math.random() * 6)), 70);
+/* 画面中央の大きなサイコロ。
+   出目を決めるのはサーバーなので、返事が来るまで回しつづけて、来たら着地させる。
+   着地するまでコマも歩かせない（diceBusy） */
+let diceBusy = false, rollStart = 0;
+const MIN_ROLL = 900, HOLD = 620;
+function startBigDice() {
+  if (diceBusy) return;
+  diceBusy = true; rollStart = Date.now();
+  const stage = $("diceStage"), die = $("bigDie");
+  stage.classList.add("on"); die.classList.remove("land"); die.classList.add("roll");
+  $("dieMsg").textContent = ja() ? "サイコロを ころがしています…" : "Rolling…";
+  spinTimer = setInterval(() => diceFace(1 + Math.floor(Math.random() * 6), die), 80);
+}
+function landBigDice(n) {
+  if (!diceBusy || !spinTimer) return;
+  const wait = Math.max(0, MIN_ROLL - (Date.now() - rollStart));
   setTimeout(() => {
+    if (!spinTimer) return;
     clearInterval(spinTimer); spinTimer = null;
-    $("diceFace").classList.remove("spin");
-    diceFace((G && G.dice) || 1);
-  }, 700);
+    const die = $("bigDie");
+    die.classList.remove("roll"); die.classList.add("land");
+    diceFace(n, die); diceFace(n);
+    $("dieMsg").textContent = ja() ? `${n} マスすすむ！` : `Move ${n}!`;
+    setTimeout(() => {
+      $("diceStage").classList.remove("on");
+      diceBusy = false;
+      if (G) { stepAnim(); renderPending(); }     /* ここからコマが歩きだす */
+    }, HOLD);
+  }, wait);
 }
 $("diceBtn").onclick = () => {
   const cur = G && G.players[G.turn];
-  if (cur && cur.pos >= 4) spinDice();
+  if (cur && cur.pos >= 4) startBigDice();
   send({ t: "roll" });
 };
 
@@ -129,8 +149,12 @@ function applyLang() {
     ? "死別・干ばつなどのライフイベントを含める<br><small>ファシリテーター向け設定。参加者の状況にあわせてONにしてください。</small>"
     : "Include loss & disaster life events<br><small>For facilitators. Turn on when it suits your group.</small>";
   $("startBtn").textContent = ja() ? "ゲーム開始" : "Start game";
-  $("cardBtnLabel").textContent = ja() ? "カード" : "Card";
-  $("cardBtn").setAttribute("aria-label", ja() ? "自分の家庭カードを見る" : "See my family card");
+  $("cardBtnLabel").textContent = ja() ? "じぶんのカード" : "My card";
+  $("helpBtnLabel").textContent = ja() ? "あそびかた" : "How to play";
+  $("hostBtnLabel").textContent = ja() ? "進行" : "Host";
+  $("cardBtn").setAttribute("aria-label", ja() ? "自分の家庭カードとステータスを見る" : "See my card and status");
+  $("helpBtnGame").setAttribute("aria-label", ja() ? "あそびかた" : "How to play");
+  $("hostBtn").setAttribute("aria-label", ja() ? "進行役メニュー" : "Host tools");
   $("logoTxt").textContent = ja() ? "トビラ" : "TOBIRA";
   $("resTitle").textContent = ja() ? "けっか はっぴょう" : "Results";
   $("resSub").textContent = ja()
@@ -155,7 +179,9 @@ const mqMobile = window.matchMedia("(max-width:700px)");
    空はマスを置くぶんだけ細くして、盤面を上まで使う。 */
 const LAY_WIDE = {
   vb: [1780, 864], corner: 100, skyH: 84, aspect: 2.06,
-  pts: [[140,150],[1640,150],[1640,360],[140,360],[140,570],[1640,570],[1640,780],[140,780]],
+  /* 1段目と4段目だけ左へ66のばしてある。こうすると3つのUターンがちょうど半分で
+     切れて、切り口が水平になる（1段目には曲がり角が1つしかないぶんの帳尻） */
+  pts: [[106,150],[1672,150],[1672,360],[172,360],[172,570],[1672,570],[1672,780],[106,780]],
   sub: true, tokenW: 52, tokenH: 66, fsBig: 21, fsSmall: 17,
 };
 const LAY_TALL = {
@@ -538,12 +564,16 @@ function renderTokens() {
         t.textContent = ja() ? "あなた" : "YOU";
         g.appendChild(t);
       }
-      const fo = el("foreignObject", { x: foot[0] - W/2, y: foot[1] - H, width: W, height: H });
-      const div = document.createElement("div");
-      div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-      div.style.cssText = `width:${W}px;height:${H}px;background:url(./chars/${charOf(p)}-${emotionOf(p, isTurn)}.png) center bottom/contain no-repeat;`
-        + `filter:drop-shadow(0 1px 2px rgba(63,82,102,.3))${isTurn ? "" : ";opacity:.82"}`;
-      fo.appendChild(div); g.appendChild(fo);
+      /* キャラは SVG の <image> で描く。HTMLを埋めこむ foreignObject だと
+         描き直しのタイミングが影や名前とそろわず、歩いている最中にずれて見える */
+      const img = el("image", {
+        href: `./chars/${charOf(p)}-${emotionOf(p, isTurn)}.png`,
+        x: foot[0] - W/2, y: foot[1] - H, width: W, height: H,
+        preserveAspectRatio: "xMidYMax meet",
+        opacity: isTurn ? 1 : .82,
+      });
+      img.style.filter = "drop-shadow(0 1px 2px rgba(63,82,102,.3))";
+      g.appendChild(img);
       layer.appendChild(g);
     });
   });
@@ -551,7 +581,7 @@ function renderTokens() {
 /* サーバーが決めた位置まで、1マスずつ歩かせる。
    表示が失敗しても進行を止めないよう、必ず終了して次のモーダルを出す */
 function stepAnim() {
-  if (animTimer || !G) return;
+  if (animTimer || !G || diceBusy) return;
   const behind = () => G.players.some(p => (shown[p.id] == null ? p.pos : shown[p.id]) !== p.pos);
   if (!behind()) return;
   let guard = 0;
@@ -743,7 +773,7 @@ const privNote = v => (v && (!Array.isArray(v) || v.length))
 function renderPending() {
   const pd = G.pending;
   if (!pd) { if (isOpen() && lastKey) closeModal(); return; }
-  if (animTimer) return;                       /* コマが動き終わってから出す */
+  if (animTimer || diceBusy) return;            /* サイコロが止まり、コマが動き終わってから出す */
   const key = JSON.stringify(pd);
   if (key === lastKey && isOpen()) return;
   lastKey = key;
@@ -765,8 +795,13 @@ function renderPending() {
         ${talk ? "" : chgPanel(beforeOf(pd.for), pd.fx || {})}
         ${mine ? `<button class="m-btn" id="mOk">${talk ? (ja() ? "話せた！ すすむ" : "We talked — continue") : "OK"}</button>`
           : (talk ? `<div class="waiting-note">${ic("people", "s")} ${ja() ? "みんなで話してから、すすみます" : "Talk together, then continue"}</div>` : waitingNote(actor.name))}
+        ${talk && YOU ? `<button class="m-btn ghost" id="mTalkCard">${ic("card", "s")} ${ja()
+          ? "じぶんのカードとステータスを見る" : "See my card and status"}</button>` : ""}
       </div>`, !mine && !talk);
     if (mine) $("mOk").onclick = () => { send({ t: "ok" }); };
+    /* 話し合いの最中に、自分の手もとをいつでも確認できるようにする。
+       閉じたら話し合いの画面にもどす */
+    if ($("mTalkCard")) $("mTalkCard").onclick = () => { lastKey = ""; showCard(true, () => { lastKey = ""; renderPending(); }); };
   }
   else if (pd.kind === "result") {
     openModal(`<div class="m-head">${mine ? "" : watchHead(actor)}
@@ -794,10 +829,14 @@ function renderPending() {
   }
   else if (pd.kind === "choice") {
     const p = pd.actor;
+    const openN = (pd.states || []).filter(x => x === "open").length;
+    /* 死別・干ばつなどのライフイベントは「トビラ」として数えないので、
+       トビラのラベルも出さない（数える対象と見た目をずらさない） */
+    const isDoor = pd.type !== "heavy";
     const doors = R.shuffle(pd.opts.map((_, i) => i)).map(i => {
       const o = pd.opts[i], st = pd.states[i];
       if (st === "unseen") return `<button class="door unseen" disabled>
-          <span class="d-badge unseen">${ic("eye", "s")}${ja() ? "見えないトビラ" : "A door you can't see"}</span>
+          ${isDoor ? `<span class="d-badge unseen">${ic("eye", "s")}${ja() ? "見えないトビラ" : "A door you can't see"}</span>` : ""}
           <span class="d-title">？？？</span>
           <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></button>`;
       const key2 = reqLabel(p, o), ok = st === "open";
@@ -813,15 +852,15 @@ function renderPending() {
         : (o.req.maxMoney != null && p.money >= o.req.maxMoney
           ? (ja() ? "（対象外…）" : " (not eligible…)") : (ja() ? "（たりない…）" : " (not enough…)"));
       return `<button class="door ${ok ? "open" : "locked"}" data-i="${i}" ${ok && mine ? "" : "disabled"}>
-          <span class="d-badge ${ok ? "open" : "lock"}">${ic(ok ? "door" : "lock", "s")}${ok
+          ${isDoor ? `<span class="d-badge ${ok ? "open" : "lock"}">${ic(ok ? "door" : "lock", "s")}${ok
             ? (ja() ? "開けられるトビラ" : "A door you can open")
-            : (ja() ? "カギが足りないトビラ" : "A door you can't open")}</span>
+            : (ja() ? "カギが足りないトビラ" : "A door you can't open")}</span>` : ""}
           <span class="d-title">${L(o.t)}</span>
           <span class="d-desc">${L(o.d)}</span>
+          ${o.cons ? `<span class="d-cons">${L(o.cons)}</span>` : ""}
           ${key2 ? `<span class="d-key">${ic(ok ? "door" : "lock", "s")}${ja() ? "カギ：" : "Key: "}${key2}${ok ? "" : short}</span>` : ""}${cost}
         </button>`;
     }).join("");
-    const openN = (pd.states || []).filter(x => x === "open").length;
     const stuck = openN === 0;
     openModal(`<div class="m-head">
         ${tagChip(pd.def.heavy ? "heavy" : "choice")}
@@ -832,9 +871,9 @@ function renderPending() {
       </div>
       <div class="m-body">
         <p class="m-lead">${L(pd.def.body)}</p>
-        <div class="door-note">${ic("door", "s")}<span>${ja()
+        ${!isDoor ? "" : `<div class="door-note">${ic("door", "s")}<span>${ja()
           ? `この下のひとつひとつが「<b>トビラ</b>」。いま開けられるのは <b>${openN}枚</b>。<br>開けたトビラの数は、25歳のけっかで数えます。`
-          : `Each option below is one <b>door</b>. <b>${openN}</b> will open right now.<br>The doors you opened are counted in the results at 25.`}</span></div>
+          : `Each option below is one <b>door</b>. <b>${openN}</b> will open right now.<br>The doors you opened are counted in the results at 25.`}</span></div>`}
         <div class="door-list">${doors}</div>
         ${stuck && mine ? `<div class="m-note" style="margin-top:14px">${ja() ? "開けられるトビラが、ひとつもなかった…。" : "Not a single door would open…"}</div>
           <button class="m-btn" id="mPass">${ja() ? "今回は見送る" : "Pass this time"}</button>` : ""}
@@ -889,7 +928,7 @@ function myChoiceList() {
 }
 
 /* ---------- 家庭カード（自分のぶんだけ） ---------- */
-function showCard(review) {
+function showCard(review, onClose) {
   if (!YOU) return;
   const p = YOU;
   const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0, color: R.PCOLORS[0] };
@@ -910,8 +949,18 @@ function showCard(review) {
       <div class="fam-story">${L(p.fam.story)}
         <div class="fam-asa">${ic("sun", "s")} <b>${ja() ? "あなたの朝" : "Your morning"}</b>：${L(p.fam.asa)}</div>
       </div>
+      <div class="now-stats">
+        <div class="ns money"><div class="k">${ic("coin", "s")}${ja() ? "おかね" : "Money"}</div><div class="v">${fm(me.money)}</div></div>
+        <div class="ns learn"><div class="k">${ic("star", "s")}${ja() ? "まなび" : "Learn"}</div><div class="v">★${me.learn}</div></div>
+        <div class="ns happy"><div class="k">${ic("heart", "s")}${ja() ? "ハッピー" : "Happy"}</div><div class="v">♥${me.happy}</div></div>
+      </div>
+      ${(p.open + p.locked + p.unseen) > 0 ? `<div class="now-doors">
+        <div class="k">${ic("door", "s")}${ja() ? "ここまでに出会ったトビラ" : "Doors met so far"}</div>
+        <div class="dl"><span class="lo">${ja() ? "開けられた" : "opened"} <b>${p.open}</b></span>
+          <span class="ll">${ja() ? "カギが足りなかった" : "short of keys"} <b>${p.locked}</b></span>
+          <span class="lu">${ja() ? "見えなかった" : "couldn't see"} <b>${p.unseen}</b></span></div>
+      </div>` : ""}
       <div class="fam-stats">
-        <div class="fs wide"><div class="k">${ja() ? "いまのおかね" : "Money now"}</div><div class="v">${fm(me.money)}</div></div>
         <div class="fs"><div class="k">${ja() ? "おしごとの基本給" : "Base pay"}</div>
           <div class="v">${fm(p.fam.wage)} <small>${ja() ? `＋★×${fm(p.mult)}` : `+★×${fm(p.mult)}`}</small></div></div>
         <div class="fs"><div class="k">${ja() ? "仕送り" : "Allowance"}</div>
@@ -929,7 +978,11 @@ function showCard(review) {
       <div class="fam-secret">${ic("lock", "s")} ${ja() ? "このカードは、あなたの端末にしか表示されません。" : "This card is shown only on your device."}</div>
       <button class="m-btn" id="mCard">${review ? (ja() ? "とじる" : "Close") : (ja() ? "OK、覚えた" : "Got it")}</button>
     </div>`);
-  $("mCard").onclick = () => { closeModal(); if (!review) send({ t: "seen" }); };
+  $("mCard").onclick = () => {
+    closeModal();
+    if (!review) send({ t: "seen" });
+    else if (onClose) onClose();
+  };
 }
 
 /* ---------- 描画のふりわけ ---------- */
@@ -1007,6 +1060,7 @@ function render() {
       + (cur.connected ? "" : `<span class="tp-off">${ja() ? "切断中" : "offline"}</span>`);
     const child = cur.pos < 4;
     $("diceFace").style.display = child ? "none" : "grid";
+    if (G.dice && diceBusy) landBigDice(G.dice);
     if (!spinTimer) diceFace(G.dice || 1);
     $("diceBtn").disabled = !(mine && !G.pending);
     $("diceLabel").textContent = mine
@@ -1076,48 +1130,6 @@ function showResult() {
   $("resLeftNote").innerHTML = gone.length
     ? (ja() ? `とちゅうで抜けた人：${gone.map(p => p.name).join("、")}` : `Left partway: ${gone.map(p => p.name).join(", ")}`)
     : "";
-  const totalUnseen = playing.reduce((s, p) => s + p.unseen, 0);
-  /* 1人プレイでは「見くらべ」が成立しない。ネタバラシとトビラ一覧が主役になる */
-  const solo = playing.length === 1;
-  $("insightBox").innerHTML = ja() ? `
-    <b>■ ふりかえりタイム</b><br>
-    ${solo
-      ? "この19年で集まった <b>♥ハッピー</b> は、<b>じぶんの意思で選べた回数</b>だ。<br>♥を生むトビラのカギは、<b>生まれた場所</b>によってぜんぜん違う。"
-      : "順位を決めたのは、お金の多さじゃなくて <b>♥ハッピー</b>。<br>♥が多いということは——<b>人生の選択肢をたくさん持ち、じぶんの意思で選べた</b>ということ。<br>でも、♥を生むトビラのカギは、<b>生まれた場所</b>によってぜんぜん違った。"}<br><br>
-    ${solo ? `あなたの19年間で、<b>${totalUnseen}枚のトビラが「見えてすら いなかった」</b>。`
-           : `このテーブル全体で、<b>${totalUnseen}枚のトビラが「見えてすら いなかった」</b>。`}<br>
-    それはウガンダの家庭だけの話じゃない——<b>支え合いのトビラ</b>は、めぐまれた家庭からこそ見えなかったはず。<br>
-    カギが足りないのと、扉があることを知らないのは、ぜんぜん違う。<br><br>
-    ${solo
-      ? "<b>「ネタバラシ」ボタン</b>で？？？の中身を、<b>「19年間のトビラ一覧」</b>で通らなかった道を見てみよう。ここがこのゲームの本番。"
-      : "それぞれのカードの<b>「ネタバラシ」ボタン</b>で、？？？の中身をのぞいてみよう。"}<br><br>
-    ${solo ? "考えてみよう：" : "話してみよう："}<br>
-    ・同じ「おしごとマス」・同じ★の数なのに、かせぎがぜんぜんちがった。それは本人の努力のちがいだろうか？<br>
-    ・ウガンダ育ちは、★を増やすだけではかせぎが伸びなかった。「まなび」が実るために必要だった<b>もうひとつのカギ</b>は何だった？<br>
-    ・あなたの家庭カードから見えなかったのは、どんなトビラだった？　逆に、見えていた強みは？<br>
-    ・親を亡くしたウガンダの子には、何が「見えて」いた？　それはなぜだろう？<br>
-    ・AAIの扉は「ずるい」？——その扉には「志」の約束がついていた。25歳のいま、その人はどこで何をしていた？<br>
-    ・今日あなたが学校に持ってきたもの——スマホ、無料の教科書、給食。それは、どの家庭カードの世界のものだった？<br>
-    ・日本にいる私たちが、世界の遺児にわたせる「カギ」って、何だろう？` : `
-    <b>■ Reflection time</b><br>
-    ${solo
-      ? "The <b>♥ Happiness</b> you gathered over these 19 years is <b>the number of times you chose with your own will</b>.<br>But the keys to the ♥ doors differ completely depending on <b>where you were born</b>."
-      : "The ranking wasn't decided by money, but by <b>♥ Happiness</b>.<br>More ♥ means you <b>held more of life's options — and chose with your own will</b>.<br>But the keys to the ♥ doors were completely different depending on <b>where you were born</b>."}<br><br>
-    ${solo ? `In your 19 years, <b>${totalUnseen} doors were never even visible</b>.`
-           : `Across this table, <b>${totalUnseen} doors were never even visible</b>.`}<br>
-    And that's not only about the Ugandan families — the <b>doors of community support</b> were invisible to the well-off families.<br>
-    Lacking a key, and not knowing a door exists, are very different things.<br><br>
-    ${solo
-      ? "Open the <b>Reveal button</b> to see inside the ？？？, and <b>All doors of the 19 years</b> to see the roads you never walked. This is where the game really happens."
-      : "Use each player's <b>Reveal button</b> to peek inside the ？？？."}<br><br>
-    ${solo ? "Think about it:" : "Talk about it:"}<br>
-    · Same work square, same ★ — completely different pay. Was that about effort?<br>
-    · For those raised in Uganda, more ★ alone didn't raise pay. What was <b>the other key</b> that made learning bear fruit?<br>
-    · Which doors were invisible from your Family Card? And what strengths could you see?<br>
-    · What could the orphan in Uganda "see"? Why?<br>
-    · Was the AAI door "unfair"? — It came with a promise of purpose. At 25, where was that player, and what were they doing?<br>
-    · The things you brought to school today — a phone, free textbooks, school lunch. Which family card's world do they belong to?<br>
-    · What "keys" could we hand to orphans around the world?`;
 }
 
 /* ---------- ネタバラシ ---------- */
@@ -1240,7 +1252,7 @@ const RULE_PAGES = [
   {type:"fam", tag:{ja:"家庭カード",en:"Family Cards"}, title:{ja:"スタート地点は、国によってちがう",en:"Your start depends on where you're born"}, items:[
     ["home",{ja:"はじめに引く<b>家庭カード</b>で、生まれる国・持ちもの・基本給が変わる。",en:"The <b>Family Card</b> you draw sets your country, belongings, and base pay."}],
     ["eye",{ja:"とちゅうで「？？？」の選択肢に出会うかも。それが何なのかは——遊びおわってからのお楽しみ。",en:"You may meet ？？？ options along the way. What they are — you'll find out after the game."}],
-    ["people",{ja:"全員ゴールしたら<b>ふりかえりタイム</b>。感じたことを話してみよう。",en:"When everyone finishes: <b>reflection time</b>. Talk about what you felt."}],
+    ["people",{ja:"全員ゴールしたら結果発表。<b>「ネタバラシ」</b>で、？？？の中身をたしかめよう。",en:"When everyone finishes: results. Open the <b>Reveal</b> to see what the ？？？ really were."}],
   ]},
   {type:"heavy", tag:{ja:"なぜウガンダ？",en:"Why Uganda?"}, title:{ja:"実在する場所と、実在する支え",en:"A real place, and real support"}, items:[
     ["globe",{ja:"このゲームの舞台のひとつ、ウガンダは実在の国。病気や紛争で親を亡くした子どもたちが、たくさん暮らしています。",en:"Uganda, one of this game's settings, is a real country — home to many children who lost parents to illness or conflict."}],
@@ -1274,7 +1286,7 @@ function renderRules(page) {
 /* 開発用: ブラウザから内部状態をのぞくためのフック */
 setInterval(() => {
   try {
-    if (G && G.pending && !isOpen() && !animTimer) renderPending();
+    if (G && G.pending && !isOpen() && !animTimer && !diceBusy) renderPending();
   } catch (e) {}
 }, 1500);
 

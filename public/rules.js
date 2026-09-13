@@ -144,51 +144,51 @@ function choiceDef(key, p){
     case "shinro": return {
       title:{ja:"進学のトビラ",en:"The School Door"}, body:{ja:"学校を卒業。ここから先の道を選ぼう。",en:"You finished school. Choose your next path."},
       opts:[
-        {t:{ja:"上の学校へ進学する（自費）",en:"Continue to higher education (self-funded)"}, d:{ja:"学費を家のお金で払ってまなぶ。世界がひろがる",en:"Your family pays the fees. The world opens up"}, req:{money:150}, fx:{money:-150, learn:3, happy:1}},
-        {t:{ja:"奨学金・支援団体の力で進学する",en:"Continue with a scholarship / aid group"}, d:{ja:"はたらきはじめたら、すこしずつ返す。支援を知っていれば、返さなくていい奨学金に出会えることも",en:"You repay bit by bit once you work. If you know the right support, you may find a scholarship you never repay"}, tag:"shien", req:{maxMoney:150}, fx:{money:-30, learn:3, happy:1}, special:"shogakukin"},
-        {t:{ja:"働いて家族を支える",en:"Work to support your family"}, d:{ja:"畑や店で働き、現場で経験を積む",en:"Field or shop — you learn on the job"}, req:{}, fx:{money:80, learn:1}},
+        {t:{ja:"上の学校へ進学する（自費）",en:"Continue to higher education (self-funded)"}, d:{ja:"学費を家のお金で払ってまなぶ。世界がひろがる",en:"Your family pays the fees. The world opens up"}, cons:{ja:"でも、家のお金が一気に減る。その間かせぎはない",en:"But it drains the family's money, and you earn nothing meanwhile"}, req:{money:150}, fx:{money:-150, learn:3, happy:1}},
+        {t:{ja:"奨学金・支援団体の力で進学する",en:"Continue with a scholarship / aid group"}, d:{ja:"はたらきはじめたら、すこしずつ返す。支援を知っていれば、返さなくていい奨学金に出会えることも",en:"You repay bit by bit once you work. If you know the right support, you may find a scholarship you never repay"}, cons:{ja:"でも、貸与型なら働きはじめてから何年も返しつづける",en:"But if it's a loan, you repay for years once you start working"}, tag:"shien", req:{maxMoney:150}, fx:{money:-30, learn:3, happy:1}, special:"shogakukin"},
+        {t:{ja:"働いて家族を支える",en:"Work to support your family"}, d:{ja:"畑や店で働き、現場で経験を積む",en:"Field or shop — you learn on the job"}, cons:{ja:"でも、学ぶ時間はほとんど残らない。まなびは伸びにくい",en:"But almost no time is left to study — your learning barely grows"}, req:{}, fx:{money:80, learn:1}},
       ]};
     case "kurashi":
       if(p.fam.rural) return {
         title:{ja:"くらしのトビラ",en:"The Home Door"}, variant:{ja:"ウガンダ育ち",en:"raised in Uganda"}, body:{ja:"毎日の水くみと、暗くなったら終わる勉強。くらしを変える？",en:"Fetching water every day; studying ends at sunset. Change how you live?"},
         opts:[
-          {t:{ja:"雨水タンクとソーラーランプを入れる",en:"Install a rain tank & solar lamp"}, d:{ja:"水くみの時間が、勉強の時間に変わる",en:"Water-fetching time becomes study time"}, req:{money:50}, fx:{money:-50, learn:1, happy:2}},
-          {t:{ja:"いままでどおりの暮らしを続ける",en:"Keep living as before"}, d:{ja:"お金はかからない。そのぶん時間はかかる",en:"Costs nothing — but takes time"}, req:{}, fx:{money:20}},
+          {t:{ja:"雨水タンクとソーラーランプを入れる",en:"Install a rain tank & solar lamp"}, d:{ja:"水くみの時間が、勉強の時間に変わる",en:"Water-fetching time becomes study time"}, cons:{ja:"でも、まとまったお金が一度に出ていく",en:"But it takes a large sum all at once"}, req:{money:50}, fx:{money:-50, learn:1, happy:2}},
+          {t:{ja:"いままでどおりの暮らしを続ける",en:"Keep living as before"}, d:{ja:"お金はかからない。そのぶん時間はかかる",en:"Costs nothing — but takes time"}, cons:{ja:"でも、水くみと暗さに毎日時間をとられつづける",en:"But water-fetching and darkness keep eating your days"}, req:{}, fx:{money:20}},
         ]};
       return {
         title:{ja:"くらしのトビラ",en:"The Home Door"}, variant:{ja:"欧米・日本育ち",en:"raised in the West / Japan"}, body:{ja:"そろそろ自分の暮らしを考えたい。",en:"Time to think about a place of your own."},
         opts:[
-          {t:{ja:"ひとり暮らしを始める",en:"Start living on your own"}, d:{ja:"自由と責任。自分の生活をつくる",en:"Freedom and responsibility — a life you build"}, req:{money:100}, fx:{money:-100, learn:1, happy:2}},
-          {t:{ja:"実家でしっかり貯金",en:"Stay home and save"}, d:{ja:"堅実もりっぱな選択",en:"Playing it steady is a fine choice"}, req:{}, fx:{money:50}},
+          {t:{ja:"ひとり暮らしを始める",en:"Start living on your own"}, d:{ja:"自由と責任。自分の生活をつくる",en:"Freedom and responsibility — a life you build"}, cons:{ja:"でも、家賃も光熱費も、これから全部自分もち",en:"But rent and bills are all yours from now on"}, req:{money:100}, fx:{money:-100, learn:1, happy:2}},
+          {t:{ja:"実家でしっかり貯金",en:"Stay home and save"}, d:{ja:"堅実もりっぱな選択",en:"Playing it steady is a fine choice"}, cons:{ja:"でも、自分で決めて暮らす経験は、先のばしになる",en:"But learning to run your own life gets postponed"}, req:{}, fx:{money:50}},
         ]};
     case "machi":
       if(p.fam.rural) return {
         title:{ja:"まちのトビラ",en:"The Town Door"}, variant:{ja:"ウガンダ育ち",en:"raised in Uganda"}, body:{ja:"村を出るか、残るか。人生の分かれ道。",en:"Leave the village, or stay? A fork in life."},
         opts:[
-          {t:{ja:"首都カンパラに出る",en:"Move to Kampala, the capital"}, d:{ja:"生活費は上がる。でも、見える世界と、はたらける場が変わる",en:"Living costs rise — but what you can see, and where you can work, change"}, req:{money:60}, fx:{money:-60, learn:1, happy:1}, special:"revealAll", unlock:true},
-          {t:{ja:"村で暮らしつづける",en:"Stay in the village"}, d:{ja:"顔見知りと、慣れた畑。生活費は安い",en:"Familiar faces, familiar fields. Cheap to live"}, req:{}, fx:{money:20, happy:1}},
+          {t:{ja:"首都カンパラに出る",en:"Move to Kampala, the capital"}, d:{ja:"生活費は上がる。でも、見える世界と、はたらける場が変わる",en:"Living costs rise — but what you can see, and where you can work, change"}, cons:{ja:"でも、知り合いのいない場所。生活費も上がる",en:"But nobody knows you there, and living costs more"}, req:{money:60}, fx:{money:-60, learn:1, happy:1}, special:"revealAll", unlock:true},
+          {t:{ja:"村で暮らしつづける",en:"Stay in the village"}, d:{ja:"顔見知りと、慣れた畑。生活費は安い",en:"Familiar faces, familiar fields. Cheap to live"}, cons:{ja:"でも、出会えるしごとと人は、村にあるぶんだけ",en:"But the work and the people you meet are only what the village holds"}, req:{}, fx:{money:20, happy:1}},
           /* ショート版で足した「支え合い」の選択肢。本番版では26歳以降のトビラ（挑戦・大きな夢）に
              chiiki タグがあったが、そのトビラが盤面から落ちたため、このタグを持つ選択肢が
              1つもなくなっていた。→ めぐまれた家庭（chiiki を隠している w1/w2/w4）が
              「？？？」に一度も出会わず、ふりかえりの「支え合いのトビラは、めぐまれた家庭からこそ
              見えなかったはず」が必ず外れる状態だった。ここで復活させている。 */
-          {t:{ja:"村の助け合いの輪に入る",en:"Join the village's circle of mutual help"}, d:{ja:"毎月すこしずつ出しあって、困った人を順番に助ける",en:"Everyone puts in a little each month, and helps whoever needs it next"}, tag:"chiiki", req:{money:20}, fx:{money:-20, learn:1, happy:2}},
+          {t:{ja:"村の助け合いの輪に入る",en:"Join the village's circle of mutual help"}, d:{ja:"毎月すこしずつ出しあって、困った人を順番に助ける",en:"Everyone puts in a little each month, and helps whoever needs it next"}, cons:{ja:"でも、自分が困っていない月も出しつづける",en:"But you keep paying in even in months you don't need help"}, tag:"chiiki", req:{money:20}, fx:{money:-20, learn:1, happy:2}},
         ]};
       return {
         title:{ja:"まちのトビラ",en:"The Town Door"}, variant:{ja:"欧米・日本育ち",en:"raised in the West / Japan"}, body:{ja:"進学・しごと・暮らし。どこで生きていく？",en:"Study, work, life — where will you live?"},
         opts:[
-          {t:{ja:"大都市に住みつづける",en:"Stay in the big city"}, d:{ja:"情報も出会いも多い。そのぶん生活費が高い",en:"Full of information and encounters — and high costs"}, req:{}, fx:{money:-30, happy:1}},
-          {t:{ja:"家賃の安い郊外へ",en:"Move somewhere cheaper"}, d:{ja:"浮いたお金は貯金にまわす",en:"Save the difference"}, req:{}, fx:{money:30}},
+          {t:{ja:"大都市に住みつづける",en:"Stay in the big city"}, d:{ja:"情報も出会いも多い。そのぶん生活費が高い",en:"Full of information and encounters — and high costs"}, cons:{ja:"でも、家賃と生活費で、手元には残りにくい",en:"But rent and costs leave little in your hand"}, req:{}, fx:{money:-30, happy:1}},
+          {t:{ja:"家賃の安い郊外へ",en:"Move somewhere cheaper"}, d:{ja:"浮いたお金は貯金にまわす",en:"Save the difference"}, cons:{ja:"でも、しごとも情報も、街の中心から遠くなる",en:"But work and information move further away"}, req:{}, fx:{money:30}},
           /* めぐまれた家庭は chiiki を隠しているので、ここが「？？？」になる。
              お金では買えないものが見えていない——というのがこの一枚の役目 */
-          {t:{ja:"ご近所の助け合いの輪に入る",en:"Join the neighbourhood's circle of mutual help"}, d:{ja:"すこしずつ出しあう当番制。となりに住む人の名前を、はじめて知った",en:"A rota everyone chips into. For the first time, you learn your neighbour's name"}, tag:"chiiki", req:{money:20}, fx:{money:-20, learn:1, happy:2}},
+          {t:{ja:"ご近所の助け合いの輪に入る",en:"Join the neighbourhood's circle of mutual help"}, d:{ja:"すこしずつ出しあう当番制。となりに住む人の名前を、はじめて知った",en:"A rota everyone chips into. For the first time, you learn your neighbour's name"}, cons:{ja:"でも、当番も集まりも、時間をとられる",en:"But the rota and the meetings take your time"}, tag:"chiiki", req:{money:20}, fx:{money:-20, learn:1, happy:2}},
         ]};
     case "ginou": return {
       title:{ja:"技術のトビラ",en:"The Skills Door"}, body:{ja:"手に職があれば、しごとの幅がぐんと広がる。",en:"A trade widens the work you can do."},
       opts:[
-        {t:{ja:"職業訓練校で技術を学ぶ",en:"Train at a vocational school"}, d:{ja:"縫製・機械・IT。お金と時間を集中投資",en:"Sewing, machines, IT — invest money and time"}, tag:"career", req:{money:50, learn:3}, fx:{money:-50, learn:2, happy:1}, unlock:true},
-        {t:{ja:"見習いとして働きながら覚える",en:"Learn as an apprentice"}, d:{ja:"先輩の手もとが教科書",en:"Your seniors' hands are the textbook"}, req:{}, fx:{money:10, learn:1}},
-        {t:{ja:"今はやめておく",en:"Not this time"}, d:{ja:"タイミングも大事",en:"Timing matters too"}, req:{}, fx:{}},
+        {t:{ja:"職業訓練校で技術を学ぶ",en:"Train at a vocational school"}, d:{ja:"縫製・機械・IT。お金と時間を集中投資",en:"Sewing, machines, IT — invest money and time"}, cons:{ja:"でも、お金と時間をまとめて使いきる",en:"But it uses up both money and time at once"}, tag:"career", req:{money:50, learn:3}, fx:{money:-50, learn:2, happy:1}, unlock:true},
+        {t:{ja:"見習いとして働きながら覚える",en:"Learn as an apprentice"}, d:{ja:"先輩の手もとが教科書",en:"Your seniors' hands are the textbook"}, cons:{ja:"でも、覚えるのに何年もかかる",en:"But it takes years to learn this way"}, req:{}, fx:{money:10, learn:1}},
+        {t:{ja:"今はやめておく",en:"Not this time"}, d:{ja:"タイミングも大事",en:"Timing matters too"}, cons:{ja:"でも、手に職はつかないまま次のマスへ",en:"But you move on without a trade in your hands"}, req:{}, fx:{}},
       ]};
     case "shigoto": return {
       title:{ja:"しごとのトビラ",en:"The Career Door"}, body:{ja:"新しいしごとの募集を見つけた！",en:"You found a new job opening!"},
@@ -199,16 +199,16 @@ function choiceDef(key, p){
            このカギだけは、24歳の時点ではもう取りに行けない。 */
         {t:{ja:"大学院に進んで、研究をつづける",en:"Go on to graduate school"},
          d:{ja:"学部で見つけた問いを、もっと深くへ。大学を出た人にだけ、この道はつづいている",
-            en:"Take the question you found as an undergraduate deeper — a road that continues only for those who finished university"},
+            en:"Take the question you found as an undergraduate deeper — a road that continues only for those who finished university"}, cons:{ja:"でも、しばらくのあいだ収入は減る",en:"But your income drops for a while"},
          req:{univ:true, learn:6}, fx:{money:-50, learn:3, happy:3}},
-        {t:{ja:"国際機関・NGOで働く",en:"Work for an international org / NGO"}, d:{ja:"まなびの蓄積が採用の決め手に",en:"Your learning is what gets you hired"}, tag:"career", req:{learn:5}, fx:{learn:1, happy:2}, unlock:true},
-        {t:{ja:"給料の高いしごとに移る",en:"Move to a better-paid job"}, d:{ja:"スキルを高く買ってもらう",en:"Sell your skills higher"}, req:{learn:4}, fx:{money:100}},
-        {t:{ja:"いまのしごとを続ける",en:"Keep your current job"}, d:{ja:"安定して働き、少し昇給した",en:"Steady work, a small raise"}, req:{}, fx:{money:30}},
+        {t:{ja:"国際機関・NGOで働く",en:"Work for an international org / NGO"}, d:{ja:"まなびの蓄積が採用の決め手に",en:"Your learning is what gets you hired"}, cons:{ja:"でも、給料は高くない",en:"But the pay is not high"}, tag:"career", req:{learn:5}, fx:{learn:1, happy:2}, unlock:true},
+        {t:{ja:"給料の高いしごとに移る",en:"Move to a better-paid job"}, d:{ja:"スキルを高く買ってもらう",en:"Sell your skills higher"}, cons:{ja:"でも、いままでの人間関係は一度リセットになる",en:"But you start over with the people around you"}, req:{learn:4}, fx:{money:100}},
+        {t:{ja:"いまのしごとを続ける",en:"Keep your current job"}, d:{ja:"安定して働き、少し昇給した",en:"Steady work, a small raise"}, cons:{ja:"でも、はたらき方も、見える景色も変わらない",en:"But neither your work nor your view of the world changes"}, req:{}, fx:{money:30}},
       ]};
     case "kaigai": {
       const base = [
         /* univ:true = この選択で「大学に行けた」ことになる。24歳の大学院のカギになる */
-        {t:{ja:"海外の大学に留学する",en:"Study at a university abroad"}, d:{ja:"言葉の壁をこえた先に、新しい世界",en:"Beyond the language barrier, a new world"}, tag:"global", req:{money:150, learn:4}, fx:{money:-150, learn:2, happy:3}, unlock:true, univ:true},
+        {t:{ja:"海外の大学に留学する",en:"Study at a university abroad"}, d:{ja:"言葉の壁をこえた先に、新しい世界",en:"Beyond the language barrier, a new world"}, cons:{ja:"でも、家族とは遠くはなれる。言葉も一からやり直し",en:"But you live far from your family, and start over in another language"}, tag:"global", req:{money:150, learn:4}, fx:{money:-150, learn:2, happy:3}, unlock:true, univ:true},
         /* ウガンダにも大学はある（マケレレなど）。壁は「知らないこと」ではなく学費なので、
            tag は付けず全員に見せ、おかねのカギだけで差がつくようにする。
            unlock:true = 国内の大学でも、まなびがかせぎになる場につながる。
@@ -219,9 +219,9 @@ function choiceDef(key, p){
            ★3は「海外の大学」(★4)より必ず軽くしておくこと。軽くないとこの選択肢は
            海外に完全に見劣りして存在意義がなくなる。それ以上ウガンダ側を下げたいなら、
            国内を180万にしたうえで海外も上げる（＝扉ごと作りなおす）必要がある。 */
-        {t:{ja:"自分の国の大学に進む",en:"Go to a university in your own country"}, d:{ja:"国を出なくても、大学はある。壁になるのは学費のほう",en:"There are universities at home too. What stands in the way is the fees"}, req:{money:150, learn:3}, fx:{money:-150, learn:2, happy:2}, unlock:true, univ:true},
-        {t:{ja:"外国で働いてみる",en:"Work in another country"}, d:{ja:"仕送りで、遠くの家族も支えられる",en:"Send money home to your family"}, req:{learn:3}, fx:{money:80, happy:1}, unlock:true},
-        {t:{ja:"自分の国で暮らしつづける",en:"Stay in your own country"}, d:{ja:"ここにも、いい暮らしはある",en:"There is a good life here too"}, req:{}, fx:{happy:1}},
+        {t:{ja:"自分の国の大学に進む",en:"Go to a university in your own country"}, d:{ja:"国を出なくても、大学はある。壁になるのは学費のほう",en:"There are universities at home too. What stands in the way is the fees"}, cons:{ja:"でも、学費は海外とおなじだけかかる",en:"But the fees cost as much as going abroad"}, req:{money:150, learn:3}, fx:{money:-150, learn:2, happy:2}, unlock:true, univ:true},
+        {t:{ja:"外国で働いてみる",en:"Work in another country"}, d:{ja:"仕送りで、遠くの家族も支えられる",en:"Send money home to your family"}, cons:{ja:"でも、学びなおす時間はとりにくい。大学の道はここで閉じる",en:"But there's little time to study again — the university road closes here"}, req:{learn:3}, fx:{money:80, happy:1}, unlock:true},
+        {t:{ja:"自分の国で暮らしつづける",en:"Stay in your own country"}, d:{ja:"ここにも、いい暮らしはある",en:"There is a good life here too"}, cons:{ja:"でも、大学の道はここで閉じる。24歳の選択肢がひとつ減る",en:"But the university road closes here — one option fewer at 24"}, req:{}, fx:{happy:1}},
       ];
       /* 遺児家庭だけに、あしながAAI（お金のカギがない大学奨学金）の扉が存在する。
          ショート版では19歳（中等教育を終えた直後＝実際のAAIの典型的な応募時期）に置いたので、
@@ -232,7 +232,7 @@ function choiceDef(key, p){
         body:{ja:"中等教育を終えた19歳。大学へ進む道がある——国の中にも、海の向こうにも。",en:"You're 19, just out of secondary school. Roads lead on to university — at home, and across the sea."},
         opts:[
           {t:{ja:"AAI——遺児のための留学奨学金に挑戦する",en:"AAI — try for the orphans' study-abroad scholarship"},
-           d:{ja:"学費も渡航費も支援。カギはお金ではなく、まなびと『志』",en:"Fees and travel covered. The keys are learning and a mission — not money"},
+           d:{ja:"学費も渡航費も支援。カギはお金ではなく、まなびと『志』",en:"Fees and travel covered. The keys are learning and a mission — not money"}, cons:{ja:"でも、選ばれるとはかぎらない。卒業したら祖国のために働く約束がついてくる",en:"But you may not be chosen — and it comes with a promise to work for your home country"},
            tag:"shien", req:{learn:3}, fx:{learn:2, happy:3}, special:"aai", unlock:true, univ:true},
           ...base,
         ]};
@@ -278,8 +278,8 @@ function choiceDef(key, p){
     case "learnSq": return {
       title:{ja:"まなびのトビラ",en:"The Learning Door"}, body:{ja:"自分に投資するチャンス。どうする？",en:"A chance to invest in yourself."},
       opts:[
-        {t:{ja:"学校や講座にお金を払って学ぶ",en:"Pay for school or a course"}, d:{ja:"お金をかけたぶん、ぐんと伸びる",en:"Money in, big growth out"}, tag:"manabi", req:{money:30}, fx:{money:-30, learn:2}},
-        {t:{ja:"ラジオ・本・友だちから学ぶ",en:"Learn from radio, books, friends"}, d:{ja:"ゼロ円でもちゃんと前に進める",en:"Zero yen still moves you forward"}, req:{}, fx:{learn: p.perk==="kinben" ? 2 : 1}},
+        {t:{ja:"学校や講座にお金を払って学ぶ",en:"Pay for school or a course"}, d:{ja:"お金をかけたぶん、ぐんと伸びる",en:"Money in, big growth out"}, cons:{ja:"でも、いま手元にあるお金は確実に減る",en:"But the money in your hand is gone for sure"}, tag:"manabi", req:{money:30}, fx:{money:-30, learn:2}},
+        {t:{ja:"ラジオ・本・友だちから学ぶ",en:"Learn from radio, books, friends"}, d:{ja:"ゼロ円でもちゃんと前に進める",en:"Zero yen still moves you forward"}, cons:{ja:"でも、伸び方はゆっくり。教えてくれる人は選べない",en:"But growth is slow, and you can't choose who teaches you"}, req:{}, fx:{learn: p.perk==="kinben" ? 2 : 1}},
       ]};
   }
 }

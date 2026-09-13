@@ -123,6 +123,8 @@ export class Room {
       you: me && me.fam ? {
         fam: me.fam, hidden: me.hidden, perk: me.perk, mult: me.mult, allow: me.allow,
         loan: me.loan, aai: me.aai, shienDiscount: me.shienDiscount, seen: me.seen,
+        /* 自分のトビラの記録。すべて本人が画面で見たことのある数なので、ここで渡してよい */
+        open: me.open, locked: me.locked, unseen: me.unseen,
         /* 「じぶんが何を選んだか」だけ。えらばなかった選択肢＝？？？の中身は
            ここでも絶対に渡さない（結果発表のネタバラシまで取っておく） */
         myChoices: (me.doorLog || []).filter(e => e.chosen != null).map(e => ({
