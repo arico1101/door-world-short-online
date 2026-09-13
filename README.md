@@ -18,6 +18,15 @@ npm run storybook       # http://localhost:6006
 npm run build-storybook # 静的ビルドの確認
 ```
 
+## PR Preview
+
+同じリポジトリ内のブランチからPRを作成・更新すると、GitHub Actionsが
+`tobira-short-pr-<PR番号>` というCloudflare Workerをデプロイし、PRコメントに
+Preview URLを表示する。URLはPR内で固定され、コミットを追加するたびに最新状態へ更新される。
+PRを閉じるとWorkerと関連リソースは自動削除される。
+Durable Objectsを使うWorkerはCloudflareのVersion Preview URLに対応していないため、
+PRごとの独立したWorkerとしてデプロイしている。
+
 Storybookには、ロビー、待機室、盤面、家庭カード、トビラ、イベント、観戦、結果、
 ネタバラシ、ヘルプ、進行役メニューを状態別に収録している。ツールバーのLanguageで
 日本語／英語を、ViewportでPC／スマートフォン表示を切り替えられる。
