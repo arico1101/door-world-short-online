@@ -640,6 +640,7 @@ function renderStrip() {
     const c = document.createElement("div");
     c.className = "pcard" + (i === G.turn ? " now" : "") + (p.done ? " done" : "")
       + (p.connected ? "" : " off") + (p.left ? " left" : "");
+    c.style.setProperty("--ring", p.color);
     c.innerHTML = playerCardBody(p);
     s.appendChild(c);
   });
@@ -852,7 +853,7 @@ function renderPending() {
 
     /* --- 一覧：どれも同じ見た目。中身はホバー（スマホでは常時）で読める --- */
     const listHtml = () => `<div class="m-body">
-        ${me ? `<div class="pcard now m-pcard">${playerCardBody(me)}</div>` : ""}
+        ${me ? `<div class="pcard now m-pcard" style="--ring:${me.color}">${playerCardBody(me)}</div>` : ""}
         <p class="m-lead">${L(pd.def.body)}</p>
         <div class="door-list">${order.map(i => {
           const o = pd.opts[i];
@@ -1062,6 +1063,7 @@ function render() {
     showScreen("game");
     hostTools();
     renderBoard(); renderStrip(); shown = {}; renderTokens();
+    $("turnPill").style.removeProperty("--ring");
     $("turnPill").innerHTML = `<span class="tp-txt">${ja() ? "家庭カードをかくにん中" : "Checking family cards"}</span>`;
     $("diceBtn").disabled = true;
     $("diceLabel").textContent = ja() ? "まっています" : "Waiting";
@@ -1097,7 +1099,8 @@ function render() {
     stepAnim();
     const cur = G.players[G.turn];
     const mine = cur && cur.id === MYPID;
-    $("turnPill").innerHTML = `<span class="av" style="${faceBg(cur)}; border-color:${cur.color}"></span>`
+    $("turnPill").style.setProperty("--ring", cur.color);
+    $("turnPill").innerHTML = `<span class="av" style="${faceBg(cur)}"></span>`
       + `<span class="tp-txt">${ja() ? `${cur.name} さんの番・${R.AGES[cur.pos]}歳` : `${cur.name}'s turn · Age ${R.AGES[cur.pos]}`}</span>`
       + (cur.connected ? "" : `<span class="tp-off">${ja() ? "切断中" : "offline"}</span>`);
     const child = cur.pos < 4;
