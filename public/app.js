@@ -975,9 +975,6 @@ function showCard(review, onClose) {
   if (!YOU) return;
   const p = YOU;
   const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0, color: R.PCOLORS[0] };
-  /* タグの数ではなく、これから出会う「？？？」の実数を出す。
-     タグ数だと結果発表の 👁 の数と食いちがう（例：タグ3個でも選択肢は5個） */
-  const hiddenN = R.hiddenOptionCount(p, me.pos || 0);
   const tone = R.FAM_TONE[p.fam.region.ja] || ["#E9A87C", "#D98E63"];
   lastKey = "card";
   openModal(`
@@ -1014,9 +1011,6 @@ function showCard(review, onClose) {
         <div class="k">${ic("spark", "s")} ${ja() ? "あなたのとくい" : "Your strength"}</div>
         <div class="v">${L(p.fam.perkText)}</div>
       </div>
-      ${hiddenN > 0 ? `<div class="fam-hid">${ic("eye", "s")}<span>${ja()
-        ? `このさき、<b>${hiddenN}個</b>の選択肢は「？？？」としか見えません。`
-        : `<b>${hiddenN}</b> options ahead will show only as ？？？.`}</span></div>` : ""}
       ${myChoiceList()}
       <div class="fam-secret">${ic("lock", "s")} ${ja() ? "このカードは、あなたの端末にしか表示されません。" : "This card is shown only on your device."}</div>
       <button class="m-btn" id="mCard">${review ? (ja() ? "とじる" : "Close") : (ja() ? "OK、覚えた" : "Got it")}</button>
