@@ -1003,13 +1003,6 @@ function showCard(review, onClose) {
           <span class="ll">${ja() ? "カギが足りなかった" : "short of keys"} <b>${p.locked}</b></span>
           <span class="lu">${ja() ? "見えなかった" : "couldn't see"} <b>${p.unseen}</b></span></div>
       </div>` : ""}
-      <div class="fam-stats">
-        <div class="fs"><div class="k">${ja() ? "おしごとの基本給" : "Base pay"}</div>
-          <div class="v">${fm(p.fam.wage)} <small>${ja() ? `＋★×${fm(p.mult)}` : `+★×${fm(p.mult)}`}</small></div></div>
-        <div class="fs"><div class="k">${ja() ? "仕送り" : "Allowance"}</div>
-          <div class="v">${p.allow > 0 ? `+${fm(p.allow)}` : (ja() ? "なし" : "none")}
-            <small>${p.allow > 0 ? (ja() ? "かせぐたび" : "per payday") : ""}</small></div></div>
-      </div>
       <div class="fam-perk">
         <div class="k">${ic("spark", "s")} ${ja() ? "あなたのとくい" : "Your strength"}</div>
         <div class="v">${L(p.fam.perkText)}</div>
