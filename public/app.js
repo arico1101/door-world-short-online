@@ -1004,10 +1004,9 @@ function showCard(review, onClose) {
   if (!YOU) return;
   const p = YOU;
   const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0, color: R.PCOLORS[0] };
-  const tone = R.FAM_TONE[p.fam.region.ja] || ["#E9A87C", "#D98E63"];
   lastKey = "card";
   openModal(`
-    <div class="fam-top" style="background:linear-gradient(120deg,${tone[0]},${tone[1]})">
+    <div class="fam-top" style="--fam:${me.color}">
       <div class="av" style="${faceBg(me)}"></div>
       <div style="min-width:0">
         <span class="pill">${ic("home", "s")} ${L(R.TYPE_META.fam.label)}</span>

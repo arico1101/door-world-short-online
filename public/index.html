@@ -272,7 +272,11 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 .up{color:#4FA85E;} .dn{color:#D9737B;}
 
 /* 家庭カード */
-.fam-top{padding:16px 18px 14px; display:flex; gap:13px; align-items:center;}
+/* 上の帯は、そのカードを見ている本人の色。盤面のコマ・上部の手番表示とそろえる */
+.fam-top{padding:16px 18px 14px; display:flex; gap:13px; align-items:center;
+  background:linear-gradient(120deg,
+    color-mix(in srgb, var(--fam, var(--pink)) 92%, var(--ink)),
+    color-mix(in srgb, var(--fam, var(--pink)) 74%, var(--ink)));}
 .fam-top .av{width:60px; height:60px; border-radius:50%; flex:none; border:3px solid #fff;
   background-color:#fff; background-size:cover; background-position:center 16%;
   box-shadow:0 2px 8px rgba(63,82,102,.22);}
