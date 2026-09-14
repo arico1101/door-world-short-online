@@ -93,18 +93,37 @@ function diceFace(n, box) {
   const on = new Set(PIPS[n] || []);
   (box || $("diceFace")).innerHTML = Array.from({ length: 9 }, (_, i) => on.has(i) ? "<span><i></i></span>" : "<span></span>").join("");
 }
-/* 画面中央の大きなサイコロ。
+/* 画面中央の大きなサイコロ。立体の6面を組んで、本体ごと転がす。
    出目を決めるのはサーバーなので、返事が来るまで回しつづけて、来たら着地させる。
    着地するまでコマも歩かせない（diceBusy） */
 let diceBusy = false, rollStart = 0;
-const MIN_ROLL = 900, HOLD = 620;
+const MIN_ROLL = 900, HOLD = 820;                /* 着地の回りこみ(.6s)を見せてから閉じる */
+/* その目の面が正面を向くように、本体を回す向き。CSSの .f1〜.f6 の置き方と対になっている */
+const FACE_ROT = {
+  1: "rotateX(0deg) rotateY(0deg)", 2: "rotateX(0deg) rotateY(-90deg)",
+  3: "rotateX(-90deg) rotateY(0deg)", 4: "rotateX(90deg) rotateY(0deg)",
+  5: "rotateX(0deg) rotateY(90deg)", 6: "rotateX(0deg) rotateY(180deg)",
+};
+/* 6面ぶんの目を一度だけ組み立てる */
+function buildBigDie(die) {
+  if (die.childElementCount) return;
+  for (let n = 1; n <= 6; n++) {
+    const face = document.createElement("div");
+    face.className = "face f" + n;
+    diceFace(n, face);
+    die.appendChild(face);
+  }
+}
 function startBigDice() {
   if (diceBusy) return;
   diceBusy = true; rollStart = Date.now();
-  const stage = $("diceStage"), die = $("bigDie");
-  stage.classList.add("on"); die.classList.remove("land"); die.classList.add("roll");
+  const stage = $("diceStage"), scene = $("dieScene"), die = $("bigDie");
+  buildBigDie(die);
+  stage.classList.add("on");
+  scene.classList.remove("land");
+  die.classList.remove("land"); die.style.transform = ""; die.classList.add("roll");
   $("dieMsg").textContent = ja() ? "サイコロを ころがしています…" : "Rolling…";
-  spinTimer = setInterval(() => diceFace(1 + Math.floor(Math.random() * 6), die), 80);
+  spinTimer = setInterval(() => diceFace(1 + Math.floor(Math.random() * 6)), 80);
 }
 function landBigDice(n) {
   if (!diceBusy || !spinTimer) return;
@@ -113,8 +132,18 @@ function landBigDice(n) {
     if (!spinTimer) return;
     clearInterval(spinTimer); spinTimer = null;
     const die = $("bigDie");
-    die.classList.remove("roll"); die.classList.add("land");
-    diceFace(n, die); diceFace(n);
+    /* 回っている途中の向きをいったん固定してから着地の向きへ動かす。
+       そうしないと、アニメを外した瞬間に正面向きへ飛んでしまう */
+    const mid = getComputedStyle(die).transform;
+    die.classList.remove("roll");
+    die.style.transition = "none";
+    die.style.transform = mid;
+    void die.offsetWidth;                         /* ここで一度レイアウトさせる */
+    die.style.transition = "";
+    die.classList.add("land");
+    die.style.transform = FACE_ROT[n] || FACE_ROT[1];
+    $("dieScene").classList.add("land");
+    diceFace(n);
     $("dieMsg").textContent = ja() ? `${n} マスすすむ！` : `Move ${n}!`;
     setTimeout(() => {
       $("diceStage").classList.remove("on");
@@ -1393,11 +1422,13 @@ function previewGame({ screen, state, you, pid, room, lang: previewLang, modal, 
   else if (diceMode === "landed") {
     if (spinTimer) { clearInterval(spinTimer); spinTimer = null; }
     diceBusy = false;
+    buildBigDie(die);
     $("diceStage").classList.add("on");
     die.classList.remove("roll");
     die.classList.add("land");
     const value = Math.min(6, Math.max(1, Number(previewDiceValue) || 1));
-    diceFace(value, die);
+    die.style.transform = FACE_ROT[value];
+    diceFace(value);
     $("dieMsg").textContent = ja() ? `${value} マスすすむ！` : `Move ${value}!`;
   }
 }

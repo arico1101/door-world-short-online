@@ -134,16 +134,28 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
   align-items:center; justify-content:center; gap:18px; background:rgba(242,249,253,.72);
   backdrop-filter:blur(2px); pointer-events:none;}
 .dice-stage.on{display:flex;}
-.big-die{width:min(160px,38vw); aspect-ratio:1; background:#fff; border-radius:26px;
-  box-shadow:0 10px 28px rgba(63,82,102,.22), inset 0 -6px 0 rgba(63,82,102,.07);
+/* 立体のサイコロ。6面ぶんの面を組んで、本体ごと転がす。
+   出目は「その面が正面を向く向き」に本体を回して見せる（JS の FACE_ROT） */
+.die-scene{--die:min(160px,38vw); width:var(--die); aspect-ratio:1; perspective:760px;}
+.die-scene.land{animation:bigLand .5s cubic-bezier(.2,1.4,.4,1);}
+.big-die{width:100%; height:100%; position:relative; transform-style:preserve-3d;}
+.big-die .face{position:absolute; inset:0; background:#fff; border-radius:24px;
+  border:2px solid #E8F0F6; box-shadow:inset 0 -6px 0 rgba(63,82,102,.07);
   display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
-  padding:16px; gap:4px;}
+  padding:15px; gap:4px; backface-visibility:hidden;}
+.big-die .f1{transform:                translateZ(calc(var(--die) / 2));}
+.big-die .f2{transform:rotateY(90deg)  translateZ(calc(var(--die) / 2));}
+.big-die .f3{transform:rotateX(90deg)  translateZ(calc(var(--die) / 2));}
+.big-die .f4{transform:rotateX(-90deg) translateZ(calc(var(--die) / 2));}
+.big-die .f5{transform:rotateY(-90deg) translateZ(calc(var(--die) / 2));}
+.big-die .f6{transform:rotateY(180deg) translateZ(calc(var(--die) / 2));}
 .big-die span{display:grid; place-items:center;}
 .big-die i{width:22%; aspect-ratio:1; min-width:12px; border-radius:50%; background:var(--pink);}
-.big-die.roll{animation:bigRoll .45s cubic-bezier(.4,0,.6,1) infinite;}
-.big-die.land{animation:bigLand .45s cubic-bezier(.2,1.4,.4,1);}
-@keyframes bigRoll{0%{transform:rotate(-14deg) scale(.94)}50%{transform:rotate(14deg) scale(1.06)}100%{transform:rotate(-14deg) scale(.94)}}
-@keyframes bigLand{0%{transform:scale(1.28)}60%{transform:scale(.94)}100%{transform:scale(1)}}
+.big-die.roll{animation:bigTumble 1.5s linear infinite;}
+.big-die.land{transition:transform .6s cubic-bezier(.2,.85,.3,1.15);}
+@keyframes bigTumble{from{transform:rotateX(0deg) rotateY(0deg) rotateZ(0deg)}
+  to{transform:rotateX(720deg) rotateY(1080deg) rotateZ(360deg)}}
+@keyframes bigLand{0%{transform:scale(1.22)}60%{transform:scale(.95)}100%{transform:scale(1)}}
 .die-msg{font-size:clamp(19px,4.6vw,26px); font-weight:900; color:var(--ink); letter-spacing:.06em;
   min-height:1.6em;}
 
@@ -533,7 +545,7 @@ body.host-open #overlay{display:none !important;}
 
 <!-- サイコロの演出（画面中央） -->
 <div class="dice-stage" id="diceStage" aria-hidden="true">
-  <div class="big-die" id="bigDie"></div>
+  <div class="die-scene" id="dieScene"><div class="big-die" id="bigDie"></div></div>
   <div class="die-msg" id="dieMsg"></div>
 </div>
 
