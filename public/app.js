@@ -627,7 +627,7 @@ function playerCardBody(p) {
         <div class="nm">${p.name}${p.id === MYPID ? `<span class="mine-badge">${ja() ? "あなた" : "you"}</span>` : ""}
           <span class="age">${fage(R.AGES[p.pos])}</span></div>
         <div class="row">
-          <span class="m1">${fm(p.money)}</span>
+          <span class="m1">${ic("coin", "s")}${fm(p.money)}</span>
           <span class="m2">★${p.learn}</span>
           <span class="m3">♥${p.happy}</span>
         </div>
