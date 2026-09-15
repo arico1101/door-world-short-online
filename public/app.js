@@ -935,20 +935,19 @@ function renderPending() {
         <div class="door-list">${order.map(i => {
           const o = pd.opts[i];
           if (pd.states[i] === "unseen") return `<button class="door unseen" disabled>
-              ${isDoor ? `<span class="d-badge unseen">${ic("eye", "s")}${ja() ? "見えないトビラ" : "A door you can't see"}</span>` : ""}
-              <span class="d-title">？？？</span>
-              <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></button>`;
+              ${isDoor ? `<span class="d-mark unseen">${ic("eye")}</span>` : ""}
+              <span class="d-main"><span class="d-title">？？？</span>
+                <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></span></button>`;
+          /* 中身（どう伸びるか・なにを失うか）は押したあとの確認画面で見せる。
+             ここでは名前だけを見て、開けにいくかどうかを決める */
           return `<button class="door pick" data-i="${i}" data-se="off" ${mine ? "" : "disabled"}>
-              ${isDoor ? `<span class="d-badge plain">${ic("door", "s")}${ja() ? "トビラ" : "A door"}</span>` : ""}
-              <span class="d-title">${L(o.t)}</span>
-              <span class="d-more">
-                <span class="d-desc">${L(o.d)}</span>
-                ${o.cons ? `<span class="d-cons">${L(o.cons)}</span>` : ""}
-              </span></button>`;
+              ${isDoor ? `<span class="d-mark">${ic("door")}</span>` : ""}
+              <span class="d-main"><span class="d-title">${L(o.t)}</span>
+                <span class="d-more"><span class="d-ask">${isDoor
+                  ? (ja() ? "このトビラを開けますか？" : "Open this door?")
+                  : (ja() ? "これをえらびますか？" : "Choose this?")}</span></span></span></button>`;
         }).join("")}</div>
-        ${mine ? `<p class="pick-hint">${ja()
-          ? "えらびたいトビラを押すと、開けられるかどうかが分かります。"
-          : "Press the door you want — then you'll find out if it opens."}</p>` : waitingNote(actor.name)}
+        ${mine ? "" : waitingNote(actor.name)}
       </div>`;
 
     /* --- 押したあと：カギと金額を開いて、最後にもう一度たずねる --- */

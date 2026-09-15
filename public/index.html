@@ -191,13 +191,19 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 
 /* 選択肢（トビラ）。どれも同じ青のボタン。開くかどうかは押すまで分からない */
 .door-list{display:flex; flex-direction:column; gap:9px;}
-.door{display:block; width:100%; text-align:left; border-radius:16px; padding:13px 16px;
+.door{display:flex; align-items:center; gap:13px; width:100%; text-align:left;
+  border-radius:16px; padding:13px 16px;
   transition:background .14s, transform .08s; background:#E8F0F8; color:var(--ink);
   box-shadow:inset 0 0 0 2px #DAE7F3;}
+/* トビラの目じるし。文字は置かず、アイコンだけを大きく左に */
+.d-mark{flex:none; display:grid; place-items:center; color:#4B6E93;}
+.d-mark .ic{width:30px; height:30px;}
+.d-mark.unseen{color:#6E5BA8;}
+.d-main{flex:1; min-width:0;}
 .door.pick{cursor:pointer;}
 .door.pick:hover{background:#DBE9F7; box-shadow:inset 0 0 0 2px #BED4EA;}
 .door:not(:disabled):active{transform:translateY(2px);}
-/* 説明文は、ホバーできる画面ではホバーしたときだけ。スマホなどでは最初から見せる */
+/* 声かけは、ホバーできる画面ではホバーしたときだけ。スマホなどでは最初から見せる */
 .door .d-more{display:block;}
 @media (hover:hover) and (pointer:fine){
   .door .d-more{display:grid; grid-template-rows:0fr; opacity:0;
@@ -205,8 +211,7 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
   .door .d-more > *{overflow:hidden;}
   .door.pick:hover .d-more, .door.pick:focus-visible .d-more{grid-template-rows:1fr; opacity:1;}
 }
-.pick-hint{font-size:12px; font-weight:700; color:var(--sub); text-align:center;
-  line-height:1.8; margin-top:13px;}
+.d-ask{display:block; font-size:12px; font-weight:900; color:#4B6E93; margin-top:3px;}
 /* 押したあとの確認 */
 .c-card{border-radius:18px; padding:14px 16px; margin-bottom:15px;}
 .c-card.ok{background:#EAF6EF; box-shadow:inset 0 0 0 2px #C9E7D6;}
