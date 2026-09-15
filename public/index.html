@@ -194,24 +194,22 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 .door{display:flex; align-items:center; gap:13px; width:100%; text-align:left;
   border-radius:16px; padding:13px 16px;
   transition:background .14s, transform .08s; background:#E8F0F8; color:var(--ink);
-  box-shadow:inset 0 0 0 2px #DAE7F3;}
-/* トビラの目じるし。文字は置かず、アイコンだけを大きく左に */
-.d-mark{flex:none; display:grid; place-items:center; color:#4B6E93;}
-.d-mark .ic{width:30px; height:30px;}
+  box-shadow:inset 0 0 0 2px #DAE7F3; --leaf-fill:#E8F0F8;}
+/* トビラの目じるし。文字は置かず、アイコンだけを大きく左に。
+   わく（奥）と扉（手前）を重ねて置き、ホバーすると扉だけが手前にひらく。
+   ロビーのタイトルのトビラと同じ動き。閉じているあいだ扉はボタンと同じ色で、
+   ひらくと奥のくらがりが見える */
+.d-mark{flex:none; display:grid; place-items:center; width:30px; height:30px; color:#4B6E93;}
+.d-mark .ic{grid-area:1 / 1; width:30px; height:30px;}
+.d-mark .leaf{transform-origin:25% 50%; transition:transform .42s cubic-bezier(.2,.8,.3,1.2);}
+.door.pick:hover .d-mark .leaf,
+.door.pick:focus-visible .d-mark .leaf{transform:perspective(140px) rotateY(-58deg);}
 .d-mark.unseen{color:#6E5BA8;}
 .d-main{flex:1; min-width:0;}
 .door.pick{cursor:pointer;}
-.door.pick:hover{background:#DBE9F7; box-shadow:inset 0 0 0 2px #BED4EA;}
+.door.pick:hover{background:#DBE9F7; box-shadow:inset 0 0 0 2px #BED4EA; --leaf-fill:#DBE9F7;}
 .door:not(:disabled):active{transform:translateY(2px);}
-/* 声かけは、ホバーできる画面ではホバーしたときだけ。スマホなどでは最初から見せる */
-.door .d-more{display:block;}
-@media (hover:hover) and (pointer:fine){
-  .door .d-more{display:grid; grid-template-rows:0fr; opacity:0;
-    transition:grid-template-rows .18s ease, opacity .18s ease;}
-  .door .d-more > *{overflow:hidden;}
-  .door.pick:hover .d-more, .door.pick:focus-visible .d-more{grid-template-rows:1fr; opacity:1;}
-}
-.d-ask{display:block; font-size:12px; font-weight:900; color:#4B6E93; margin-top:3px;}
+@media (prefers-reduced-motion:reduce){ .d-mark .leaf{transition:none;} }
 /* 押したあとの確認 */
 .c-card{border-radius:18px; padding:14px 16px; margin-bottom:15px;}
 .c-card.ok{background:#EAF6EF; box-shadow:inset 0 0 0 2px #C9E7D6;}
@@ -456,6 +454,8 @@ body.host-open #overlay{display:none !important;}
 <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/></symbol>
 <symbol id="ic-book" viewBox="0 0 24 24"><path d="M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
 <symbol id="ic-door" viewBox="0 0 24 24"><path d="M6 21V7a6 6 0 0 1 12 0v14z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="14.6" cy="13.5" r="1.4" fill="currentColor"/></symbol>
+<symbol id="ic-doorway" viewBox="0 0 24 24"><path d="M6 21V7a6 6 0 0 1 12 0v14z" fill="currentColor" opacity=".22"/></symbol>
+<symbol id="ic-door-leaf" viewBox="0 0 24 24"><path d="M6 21V7a6 6 0 0 1 12 0v14z" fill="var(--leaf-fill,#E8F0F8)" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="14.6" cy="13.5" r="1.4" fill="currentColor"/></symbol>
 <symbol id="ic-start" viewBox="0 0 24 24"><path d="M4 12h13M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="ic-goal" viewBox="0 0 24 24"><path d="M6 21V4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4h13v9H6z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M6 4h6.5v4.5H6zM12.5 8.5H19V13h-6.5z" fill="currentColor"/></symbol>
 <symbol id="ic-home" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 10.5V20h13V10.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M10 20v-5h4v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
