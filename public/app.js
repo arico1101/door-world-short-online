@@ -926,6 +926,23 @@ function renderPending() {
     const isDoor = pd.type !== "heavy";
     const stuck = openN === 0;
     const order = R.shuffle(pd.opts.map((_, i) => i));
+    /* 死別・干ばつなどのライフイベントは「トビラ」ではない（結果発表の「出会ったトビラ」にも数えない）。
+       一覧で扉の目じるしを出さないのと同じ線引きで、押したあとの確認画面もトビラの言い方をしない */
+    const W = isDoor ? {
+      ask: ja() ? "このトビラを開けますか？" : "Open this door?",
+      yes: ja() ? "はい、このトビラを開ける" : "Yes, open it",
+      backAgain: ja() ? "やっぱり、ほかのトビラを見る" : "Back to the other doors",
+      back: ja() ? "ほかのトビラを見る" : "Back to the other doors",
+      ng: ja() ? "……このトビラは開かなかった。" : " — this door didn't open.",
+      pass: ja() ? "どれも開かない。今回は見送る" : "None will open — pass this time",
+    } : {
+      ask: ja() ? "これをえらびますか？" : "Choose this?",
+      yes: ja() ? "はい、これにする" : "Yes, choose this",
+      backAgain: ja() ? "やっぱり、ほかの選択肢を見る" : "Back to the other options",
+      back: ja() ? "ほかの選択肢を見る" : "Back to the other options",
+      ng: ja() ? "……これは選べなかった。" : " — you can't choose this.",
+      pass: ja() ? "どれも選べない。今回は見送る" : "None can be chosen — pass this time",
+    };
     const head = `<div class="m-head">
         ${tagChip(pd.def.heavy ? "heavy" : "choice")}
         <h2>${L(pd.def.title)}</h2>
@@ -980,12 +997,12 @@ function renderPending() {
           ${cost}
         </div>
         ${ok
-          ? `<p class="c-ask">${ja() ? "このトビラを開けますか？" : "Open this door?"}</p>
-             <button class="m-btn" id="mYes" data-se="open">${ja() ? "はい、このトビラを開ける" : "Yes, open it"}</button>
-             <button class="m-btn ghost" id="mBack">${ja() ? "やっぱり、ほかのトビラを見る" : "Back to the other doors"}</button>`
-          : `<p class="c-ask ng">${ic("lock", "s")} ${short}${ja() ? "……このトビラは開かなかった。" : " — this door didn't open."}</p>
-             <button class="m-btn" id="mBack">${ja() ? "ほかのトビラを見る" : "Back to the other doors"}</button>
-             ${stuck ? `<button class="m-btn ghost" id="mPass">${ja() ? "どれも開かない。今回は見送る" : "None will open — pass this time"}</button>` : ""}`}
+          ? `<p class="c-ask">${W.ask}</p>
+             <button class="m-btn" id="mYes" data-se="${isDoor ? "open" : "tap"}">${W.yes}</button>
+             <button class="m-btn ghost" id="mBack">${W.backAgain}</button>`
+          : `<p class="c-ask ng">${ic("lock", "s")} ${short}${W.ng}</p>
+             <button class="m-btn" id="mBack">${W.back}</button>
+             ${stuck ? `<button class="m-btn ghost" id="mPass">${W.pass}</button>` : ""}`}
       </div>`;
     };
 
