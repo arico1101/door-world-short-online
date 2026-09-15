@@ -1299,13 +1299,12 @@ function showRevealModal(pid) {
     return `<div class="rv-door"><div class="rv-title">${e.age != null ? fage(e.age) + " ── " : ""}${L(e.title)}${e.variant ? `（${L(e.variant)}）` : ""}</div>${rows}</div>`;
   }).join("");
   openModal(`<div class="rule-page">
-      <button class="rule-close" id="rvClose">✕</button>
       ${tagChip("choice", ja() ? "ネタバラシ" : "The Reveal")}
       <h2>${ja() ? `${p.name} さんが出会ったトビラ、ぜんぶ` : `Every door ${p.name} met`}</h2>
       <p class="m-lead" style="text-align:left">${ja() ? "紫は、ゲーム中「？？？」で中身が見えなかったトビラ。<br>ほんとうは、こんな選択肢だった——" : "Purple marks options hidden as ？？？ during the game.<br>Here's what they really were —"}</p>
       <div class="rv-list">${secs || `<p class='m-lead'>${ja() ? "トビラには出会わなかったみたい。" : "No doors were met."}</p>`}</div>
-      <button class="m-btn" id="rvOk">${ja() ? "とじる" : "Close"}</button></div>`);
-  $("rvClose").onclick = closeModal; $("rvOk").onclick = closeModal;
+      <button class="m-btn" id="rvOk">${ja() ? "とじる" : "Close"}</button></div>`, false, closeModal);
+  $("rvOk").onclick = closeModal;
 }
 const whoChips = list => list.map(p => `<span class="who"><span class="p-dot" style="background:${p.color}"></span>${p.name}</span>`).join("");
 function showAllDoorsModal() {
@@ -1345,12 +1344,11 @@ function showAllDoorsModal() {
       <div class="rv-title">${fage(g.age)} ── ${L(g.title)}${g.variant ? `（${L(g.variant)}）` : ""}${g.untrodden ? `<span class="rv-untrod">${ic("walk", "s")} ${ja() ? "だれも通らなかった" : "no one passed here"}</span>` : ""}</div>${rows}</div>`;
   }).join("");
   openModal(`<div class="rule-page">
-      <button class="rule-close" id="adClose">✕</button>
       ${tagChip("choice", ja() ? "トビラ一覧" : "All Doors")}
       <h2>${ja() ? "19年間に、こんなトビラがあった" : "The doors of these 19 years"}</h2>
       <div class="rv-list">${secs}</div>
-      <button class="m-btn" id="adOk">${ja() ? "とじる" : "Close"}</button></div>`);
-  $("adClose").onclick = closeModal; $("adOk").onclick = closeModal;
+      <button class="m-btn" id="adOk">${ja() ? "とじる" : "Close"}</button></div>`, false, closeModal);
+  $("adOk").onclick = closeModal;
 }
 $("allDoorsBtn").onclick = showAllDoorsModal;
 
