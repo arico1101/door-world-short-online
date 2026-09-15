@@ -151,7 +151,7 @@ function startBigDice() {
   stage.classList.add("on");
   scene.classList.remove("land");
   die.classList.remove("land"); die.style.transform = ""; die.classList.add("roll");
-  $("dieMsg").textContent = ja() ? "サイコロを ころがしています…" : "Rolling…";
+  $("dieMsg").textContent = "";                 /* 回っているあいだは文字を出さない。前回の「N マスすすむ！」も消す */
   se("roll");
   spinTimer = setInterval(() => diceFace(1 + Math.floor(Math.random() * 6)), 80);
 }
