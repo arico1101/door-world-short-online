@@ -829,6 +829,9 @@ function beforeOf(pid) {
   const p = G.players.find(x => x.id === pid) || { money: 0, learn: 0, happy: 0, color: R.PCOLORS[0] };
   return { money: p.money, learn: p.learn, happy: p.happy, char: charOf(p) };
 }
+/* おかね・まなびは文字で書かず、画面上のプレイヤーカードと同じ色のアイコンだけで示す */
+const money = n => `<span class="m1">${ic("coin", "s")}${fm(n)}</span>`;
+const learn = n => `<span class="m2">${ic("star", "s")}${n}</span>`;
 function reqLabel(p, o) {
   const parts = [];
   if (o.req.univ) parts.push(ja() ? "大学を出ていること" : "a university degree");
@@ -837,10 +840,10 @@ function reqLabel(p, o) {
     const memo = [];
     if (p.shienDiscount && (o.tag === "shien" || o.tag === "manabi")) memo.push(ja() ? "支援サポートで−50万" : `aid support −${fm(50)}`);
     if (p.perk === "kokusai" && o.tag === "global") memo.push(ja() ? "国際感覚で−50万" : `global sense −${fm(50)}`);
-    parts.push(`${ja() ? "おかね" : "Money"} ${fm(em)}` + (memo.length ? `（${memo.join("・")}）` : ""));
+    parts.push(money(em) + (memo.length ? `（${memo.join("・")}）` : ""));
   }
-  if (o.req.learn) parts.push(`${ja() ? "まなび" : "Learn"} ★${el2}` + (el2 < o.req.learn ? (ja() ? "（英語ネイティブで−2）" : "（native English −2）") : ""));
-  if (o.req.maxMoney != null) parts.push(ja() ? `所得制限 おかね${fm(o.req.maxMoney)}未満` : `Income limit: under ${fm(o.req.maxMoney)}`);
+  if (o.req.learn) parts.push(learn(el2) + (el2 < o.req.learn ? (ja() ? "（英語ネイティブで−2）" : "（native English −2）") : ""));
+  if (o.req.maxMoney != null) parts.push(ja() ? `所得制限 ${money(o.req.maxMoney)}未満` : `Income limit: under ${money(o.req.maxMoney)}`);
   return parts.join(" ＋ ");
 }
 const waitingNote = who => `<div class="waiting-note">${ic("clock", "s")} ${ja() ? `${who} さんが かくにん中…` : `Waiting for ${who}…`}</div>`;
@@ -996,7 +999,7 @@ function renderPending() {
           <div class="d-desc">${L(o.d)}</div>
           ${o.cons ? `<div class="d-cons">${L(o.cons)}</div>` : ""}
           ${key2 ? `<div class="c-key">${ja() ? "カギ：" : "Key: "}${key2}
-            <span class="c-now">${ja() ? `いまのあなた：おかね ${fm(p.money)}／まなび ★${p.learn}` : `You have: ${fm(p.money)} / ★${p.learn}`}</span></div>` : ""}
+            <span class="c-now">${ja() ? "いまのあなた：" : "You have: "}${money(p.money)}${ja() ? "／" : " / "}${learn(p.learn)}</span></div>` : ""}
           ${cost}
         </div>
         ${ok
