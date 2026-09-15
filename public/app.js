@@ -795,6 +795,11 @@ function renderHostPanel() {
   };
 }
 
+/* 一覧に置くトビラの目じるし。奥のわくと手前の扉をかさねて、扉だけがひらくようにする */
+const doorMark = () => `<span class="d-mark">
+      <svg class="ic way" aria-hidden="true"><use href="#ic-doorway"/></svg>
+      <svg class="ic leaf" aria-hidden="true"><use href="#ic-door-leaf"/></svg></span>`;
+
 /* ---------- モーダル部品 ---------- */
 const tagChip = (type, label) => {
   const m = R.TYPE_META[type] || R.TYPE_META.event;
@@ -939,13 +944,11 @@ function renderPending() {
               <span class="d-main"><span class="d-title">？？？</span>
                 <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></span></button>`;
           /* 中身（どう伸びるか・なにを失うか）は押したあとの確認画面で見せる。
-             ここでは名前だけを見て、開けにいくかどうかを決める */
+             ここでは名前だけを見て、開けにいくかどうかを決める。
+             「押せる」ことは文字で説明せず、目じるしのトビラがひらいて答える */
           return `<button class="door pick" data-i="${i}" data-se="off" ${mine ? "" : "disabled"}>
-              ${isDoor ? `<span class="d-mark">${ic("door")}</span>` : ""}
-              <span class="d-main"><span class="d-title">${L(o.t)}</span>
-                <span class="d-more"><span class="d-ask">${isDoor
-                  ? (ja() ? "このトビラを開けますか？" : "Open this door?")
-                  : (ja() ? "これをえらびますか？" : "Choose this?")}</span></span></span></button>`;
+              ${isDoor ? doorMark() : ""}
+              <span class="d-main"><span class="d-title">${L(o.t)}</span></span></button>`;
         }).join("")}</div>
         ${mine ? "" : waitingNote(actor.name)}
       </div>`;
