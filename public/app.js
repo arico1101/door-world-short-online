@@ -88,14 +88,22 @@ function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(id).classList.add("active");
 }
-function openModal(html, watching) {
+/* パネルの外を押したときにすること。null のあいだは外を押しても閉じない。
+   トビラやできごとは選ばずに閉じられると進行が止まるので、既定は閉じない側にしておく */
+let modalDismiss = null;
+function openModal(html, watching, onDismiss) {
   $("modalBox").className = "modal" + (watching ? " watching" : "");
   $("modalBox").innerHTML = html;
   $("overlay").classList.add("open");
   $("modalBox").scrollTop = 0;
+  modalDismiss = onDismiss || null;
 }
-function closeModal() { $("overlay").classList.remove("open"); $("modalBox").innerHTML = ""; lastKey = ""; }
+function closeModal() {
+  $("overlay").classList.remove("open"); $("modalBox").innerHTML = ""; lastKey = ""; modalDismiss = null;
+}
 const isOpen = () => $("overlay").classList.contains("open");
+/* 外側は、下の閉じるボタンとまったく同じことをする */
+$("overlay").onclick = e => { if (e.target === $("overlay") && modalDismiss) modalDismiss(); };
 
 /* ---------- ロビー ---------- */
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   /* まぎらわしい文字は除く */
@@ -754,9 +762,9 @@ function renderHostPanel() {
     ? `${cur.name} さんの番をとばす` : `Skip ${cur.name}'s turn`}</button>`);
   btns.push(`<button class="host-act danger" id="hReset">${ja()
     ? "ロビーにもどす" : "Back to the lobby"}</button>`);
+  btns.push(`<button class="host-act" id="hClose">${ja() ? "とじる" : "Close"}</button>`);
 
   openHost(`<div class="rule-page">
-    <button class="rule-close" id="hClose">✕</button>
     <span class="m-tag" style="background:#5B7FA8">${ic("tools", "s")} ${ja() ? "進行役メニュー" : "Host tools"}</span>
     <h2>${ja() ? "進行がとまったとき" : "When the game gets stuck"}</h2>
     <div class="host-note">${ja()
@@ -1062,6 +1070,11 @@ function showCard(review, onClose) {
   const p = YOU;
   const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0, color: R.PCOLORS[0] };
   lastKey = "card";
+  const done = () => {
+    closeModal();
+    if (!review) send({ t: "seen" });
+    else if (onClose) onClose();
+  };
   openModal(`
     <div class="fam-top" style="--fam:${me.color}">
       <div class="av" style="${faceBg(me)}"></div>
@@ -1092,12 +1105,8 @@ function showCard(review, onClose) {
       ${myChoiceList()}
       <div class="fam-secret">${ic("lock", "s")} ${ja() ? "このカードは、あなたの端末にしか表示されません。" : "This card is shown only on your device."}</div>
       <button class="m-btn" id="mCard">${review ? (ja() ? "とじる" : "Close") : (ja() ? "OK、覚えた" : "Got it")}</button>
-    </div>`);
-  $("mCard").onclick = () => {
-    closeModal();
-    if (!review) send({ t: "seen" });
-    else if (onClose) onClose();
-  };
+    </div>`, false, done);
+  $("mCard").onclick = done;
 }
 
 /* ---------- 描画のふりわけ ---------- */
@@ -1388,13 +1397,13 @@ function rulePageHtml(page) {
   const dots = RULE_PAGES.map((_, i) => `<span class="${i === page ? "on" : ""}"></span>`).join("");
   const last = page === RULE_PAGES.length - 1;
   return `<div class="rule-page">
-      <button class="rule-close" id="ruleClose">✕</button>
       ${tagChip(pg.type, L(pg.tag))}
       <h2>${L(pg.title)}</h2>
       <div class="rule-list">${items}</div>
       <div class="rule-dots">${dots}</div>
       <div class="rule-nav">
         ${page > 0 ? `<button class="m-btn ghost" id="rulePrev">${ja() ? "← まえ" : "← Back"}</button>` : ""}
+        ${last ? "" : `<button class="m-btn ghost" id="ruleClose">${ja() ? "とじる" : "Close"}</button>`}
         ${last ? `<button class="m-btn" id="ruleDone">${ja() ? "OK！" : "OK!"}</button>` : `<button class="m-btn" id="ruleNext">${ja() ? "つぎへ →" : "Next →"}</button>`}
       </div></div>`;
 }
@@ -1428,14 +1437,15 @@ function rulesMinHeight(width) {
 function renderRules(page) {
   lastKey = "rules" + page;
   const last = page === RULE_PAGES.length - 1;
-  openModal(rulePageHtml(page));
+  const closeRules = () => { closeModal(); render(); };
+  openModal(rulePageHtml(page), false, closeRules);
   /* 開いてから測る（モーダルの横幅が決まっていないと測れない） */
   const box = $("modalBox"), body = box.firstElementChild;
   const h = rulesMinHeight(box.getBoundingClientRect().width);
   if (h) body.style.minHeight = h + "px";
-  $("ruleClose").onclick = () => { closeModal(); render(); };
+  if ($("ruleClose")) $("ruleClose").onclick = closeRules;
   if ($("rulePrev")) $("rulePrev").onclick = () => renderRules(page - 1);
-  if (last) $("ruleDone").onclick = () => { closeModal(); render(); };
+  if (last) $("ruleDone").onclick = closeRules;
   else $("ruleNext").onclick = () => renderRules(page + 1);
 }
 
