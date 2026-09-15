@@ -381,8 +381,14 @@ h1.game-title{font-size:clamp(32px,8vw,48px); font-weight:900; letter-spacing:.1
 /* あまった高さは、項目の上下に分ける（下だけがぽっかり空かないように） */
 .rule-page .rule-list{flex:1 1 auto; justify-content:center;}
 .rule-page .rule-dots{margin-top:auto;}
-.rule-close{position:absolute; top:10px; right:12px; background:transparent; font-size:19px;
-  font-weight:900; color:var(--sub); padding:4px 8px;}
+/* 閉じるボタン。見出しの色帯に重なるので、白い丸で抜いて必ず見えるようにする */
+.rule-close{position:absolute; top:12px; right:12px; z-index:1; width:34px; height:34px;
+  border-radius:50%; background:rgba(255,255,255,.94); color:var(--ink);
+  box-shadow:0 2px 7px rgba(63,82,102,.24); padding:0;
+  display:grid; place-items:center; font-size:16px; font-weight:900; line-height:1;
+  transition:background .14s, transform .08s;}
+.rule-close:hover{background:#fff;}
+.rule-close:active{transform:translateY(1px);}
 .rule-list{display:flex; flex-direction:column; gap:10px;}
 .rule-item{display:flex; gap:12px; align-items:flex-start; background:#F7FBFD; border-radius:15px;
   padding:12px 14px; font-size:13.5px; line-height:1.85; font-weight:700;}

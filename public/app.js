@@ -723,6 +723,9 @@ function closeHost() {
   document.body.classList.remove("host-open");
 }
 const hostOpen = () => $("hostOverlay").classList.contains("open");
+/* パネルの外（うしろの暗いところ）をさわっても閉じる。
+   ゲームのモーダルは選ぶまで閉じないので、こちらの #hostOverlay だけに付ける */
+$("hostOverlay").onclick = e => { if (e.target === $("hostOverlay")) closeHost(); };
 const iAmHost = () => !!G && MYPID === G.hostId;
 const ask = t => window.confirm(L(t));
 
