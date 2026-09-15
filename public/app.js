@@ -1,6 +1,7 @@
 /* ===== トビラ せかい版 オンライン — クライアント =====
    判定はすべてサーバー(Durable Object)が行う。ここは表示と入力だけを担当する。 ===== */
 import * as R from "./rules.js";
+import * as SE from "./se.js";
 
 /* ---------- i18n ---------- */
 let lang = localStorage.getItem("tobira-lang") || "ja";
@@ -22,6 +23,34 @@ let shown = {};            /* コマの表示位置（1マスずつ動かすた�
 let lastKey = "";          /* 同じモーダルを描き直さないための署名 */
 let animTimer = null;
 let previewMode = false;
+let resultSe = false;      /* 結果発表のファンファーレを、一度だけにするための目印 */
+
+/* ---------- 効果音 ---------- */
+/* Storybook のプレビューでは鳴らさない（画面を見るための表示なので） */
+const se = name => { if (!previewMode) SE.play(name); };
+/* ボタンは data-se で音を指定する。指定がなければタップ音、"off" なら押した先で鳴らす。
+   最初のタップで AudioContext もつないでおく（ブラウザは操作前に音を出せない） */
+document.addEventListener("pointerdown", e => {
+  const b = e.target.closest && e.target.closest("button");
+  if (!b || b.disabled || previewMode) return;
+  SE.resume();
+  const name = b.dataset.se || "tap";
+  if (name !== "off") SE.play(name);
+}, true);
+function syncSe() {
+  const on = SE.isOn();
+  const label = on ? (ja() ? "音 ON" : "Sound on") : (ja() ? "音 OFF" : "Sound off");
+  $("seBtnLabel").textContent = on ? (ja() ? "音" : "Sound") : (ja() ? "消音" : "Muted");
+  $("seBtn").querySelector("use").setAttribute("href", on ? "#ic-sound" : "#ic-mute");
+  $("seBtn").setAttribute("aria-pressed", String(on));
+  $("seBtn").setAttribute("aria-label", label);
+  $("seBtnLobby").textContent = label;
+  $("seBtnLobby").classList.toggle("on", on);
+  $("seBtnLobby").setAttribute("aria-pressed", String(on));
+}
+const flipSe = () => { const on = SE.toggle(); syncSe(); if (on) SE.play("pop"); };
+$("seBtn").onclick = flipSe;
+$("seBtnLobby").onclick = flipSe;
 
 function myId() {
   /* 同じ端末の別タブでも別プレイヤーになれるよう、まずタブ内(sessionStorage)を見る。
@@ -123,6 +152,7 @@ function startBigDice() {
   scene.classList.remove("land");
   die.classList.remove("land"); die.style.transform = ""; die.classList.add("roll");
   $("dieMsg").textContent = ja() ? "サイコロを ころがしています…" : "Rolling…";
+  se("roll");
   spinTimer = setInterval(() => diceFace(1 + Math.floor(Math.random() * 6)), 80);
 }
 function landBigDice(n) {
@@ -144,6 +174,7 @@ function landBigDice(n) {
     die.style.transform = FACE_ROT[n] || FACE_ROT[1];
     $("dieScene").classList.add("land");
     diceFace(n);
+    se("land");
     $("dieMsg").textContent = ja() ? `${n} マスすすむ！` : `Move ${n}!`;
     setTimeout(() => {
       $("diceStage").classList.remove("on");
@@ -154,7 +185,8 @@ function landBigDice(n) {
 }
 $("diceBtn").onclick = () => {
   const cur = G && G.players[G.turn];
-  if (cur && cur.pos >= 4) startBigDice();
+  /* 子ども時代は1マスずつなので、サイコロの音ではなく足音にする */
+  if (cur && cur.pos >= 4) startBigDice(); else se("step");
   send({ t: "roll" });
 };
 
@@ -192,6 +224,7 @@ function applyLang() {
     : "19 years, from age 6 to 25. Ranking is decided by ♥ Happiness — and the Family Cards are revealed";
   $("allDoorsBtn").textContent = ja() ? "19年間のトビラ一覧を見る" : "See all doors of the 19 years";
   $("againBtn").textContent = ja() ? "もういちど遊ぶ" : "Play again";
+  syncSe();
   if (G) { renderBoard(); render(); }
 }
 $("langJa").onclick = () => { lang = "ja"; localStorage.setItem("tobira-lang", lang); applyLang(); };
@@ -621,11 +654,13 @@ function stepAnim() {
   animTimer = setInterval(() => {
     try {
       guard++;
+      let moved = false;
       G.players.forEach(p => {
         if (shown[p.id] == null) shown[p.id] = p.pos;
-        if (shown[p.id] < p.pos) shown[p.id]++;
+        if (shown[p.id] < p.pos) { shown[p.id]++; moved = true; }
         else if (shown[p.id] > p.pos) shown[p.id] = p.pos;
       });
+      if (moved) se("step");
       renderTokens();
       const cur = G.players[G.turn];
       if (cur && shown[cur.id] != null) focusSquare(shown[cur.id]);
@@ -807,6 +842,17 @@ const watchHead = a => `<div class="watch-head"><span class="av" style="${faceBg
 const privNote = v => (v && (!Array.isArray(v) || v.length))
   ? `<div class="m-note priv">${(Array.isArray(v) ? v.map(L).join("<br>") : L(v))}</div>` : "";
 
+/* 出てきた画面にあわせて鳴らす音を選ぶ。数字が増えるか減るかで、うれしい／つらいを分ける。
+   死別・干ばつなどの重いできごとも選択肢として出るので、そこは控えめなノックの音のまま */
+function pendingSe(pd, mine) {
+  if (pd.kind === "goal") return "goal";
+  if (pd.kind === "choice") return mine ? "door" : "pop";
+  const fx = pd.fx || {};
+  if ((fx.money || 0) < 0 || (fx.happy || 0) < 0) return "bad";
+  if ((fx.money || 0) > 0 || (fx.learn || 0) > 0 || (fx.happy || 0) > 0) return "good";
+  return pd.type === "heavy" ? "bad" : "pop";
+}
+
 /* ---------- 保留中のできごと（サーバーから来る） ---------- */
 function renderPending() {
   const pd = G.pending;
@@ -818,6 +864,7 @@ function renderPending() {
   const mine = pd.for === MYPID;
   const actor = G.players.find(p => p.id === pd.for) || { name: "?", color: R.PCOLORS[0] };
   const type = pd.type === "heavy" ? "heavy" : (["learn", "event", "income", "cost"].includes(pd.type) ? pd.type : "choice");
+  se(pendingSe(pd, mine));
 
   if (pd.kind === "info") {
     /* 「みんなで話す」マスだけは観戦ではなく、全員が同じ画面を見て話す時間 */
@@ -881,16 +928,17 @@ function renderPending() {
     const me = G.players.find(x => x.id === pd.for);
 
     /* --- 一覧：どれも同じ見た目。中身はホバー（スマホでは常時）で読める --- */
+    /* まず「どんなトビラの前にいるか」を読んでから、自分の手もと（ステータス）を見てもらう */
     const listHtml = () => `<div class="m-body">
-        ${me ? `<div class="pcard now m-pcard" style="--ring:${me.color}">${playerCardBody(me)}</div>` : ""}
         <p class="m-lead">${L(pd.def.body)}</p>
+        ${me ? `<div class="pcard now m-pcard" style="--ring:${me.color}">${playerCardBody(me)}</div>` : ""}
         <div class="door-list">${order.map(i => {
           const o = pd.opts[i];
           if (pd.states[i] === "unseen") return `<button class="door unseen" disabled>
               ${isDoor ? `<span class="d-badge unseen">${ic("eye", "s")}${ja() ? "見えないトビラ" : "A door you can't see"}</span>` : ""}
               <span class="d-title">？？？</span>
               <span class="d-desc">${ja() ? "この選択肢は、見えない。" : "You can't see this option."}</span></button>`;
-          return `<button class="door pick" data-i="${i}" ${mine ? "" : "disabled"}>
+          return `<button class="door pick" data-i="${i}" data-se="off" ${mine ? "" : "disabled"}>
               ${isDoor ? `<span class="d-badge plain">${ic("door", "s")}${ja() ? "トビラ" : "A door"}</span>` : ""}
               <span class="d-title">${L(o.t)}</span>
               <span class="d-more">
@@ -931,7 +979,7 @@ function renderPending() {
         </div>
         ${ok
           ? `<p class="c-ask">${ja() ? "このトビラを開けますか？" : "Open this door?"}</p>
-             <button class="m-btn" id="mYes">${ja() ? "はい、このトビラを開ける" : "Yes, open it"}</button>
+             <button class="m-btn" id="mYes" data-se="open">${ja() ? "はい、このトビラを開ける" : "Yes, open it"}</button>
              <button class="m-btn ghost" id="mBack">${ja() ? "やっぱり、ほかのトビラを見る" : "Back to the other doors"}</button>`
           : `<p class="c-ask ng">${ic("lock", "s")} ${short}${ja() ? "……このトビラは開かなかった。" : " — this door didn't open."}</p>
              <button class="m-btn" id="mBack">${ja() ? "ほかのトビラを見る" : "Back to the other doors"}</button>
@@ -942,7 +990,10 @@ function renderPending() {
     const bind = () => {
       if (!mine) return;
       document.querySelectorAll("#modalBox .door.pick:not(:disabled)").forEach(b => {
-        b.onclick = () => { paint(confirmHtml(+b.dataset.i), +b.dataset.i); };
+        b.onclick = () => {
+          se(pd.states[+b.dataset.i] === "open" ? "unlock" : "locked");
+          paint(confirmHtml(+b.dataset.i), +b.dataset.i);
+        };
       });
       if ($("mBack")) $("mBack").onclick = () => paint(listHtml());
       if ($("mPass")) $("mPass").onclick = () => send({ t: "choose", i: -1, pass: true });
@@ -1002,6 +1053,7 @@ function myChoiceList() {
 /* ---------- 家庭カード（自分のぶんだけ） ---------- */
 function showCard(review, onClose) {
   if (!YOU) return;
+  se("card");
   const p = YOU;
   const me = G.players.find(x => x.id === MYPID) || { money: p.fam.money, name: "", pos: 0, color: R.PCOLORS[0] };
   lastKey = "card";
@@ -1046,6 +1098,7 @@ function showCard(review, onClose) {
 /* ---------- 描画のふりわけ ---------- */
 function render() {
   if (!G) return;
+  if (G.phase !== "result") resultSe = false;
   if (G.phase === "lobby") {
     showScreen("wait");
     $("roomCode").textContent = ROOM || "------";
@@ -1128,7 +1181,10 @@ function render() {
       : (ja() ? `${cur.name} さんの番` : `${cur.name}'s turn`);
     renderPending();
   }
-  else if (G.phase === "result") { showScreen("result"); closeModal(); closeHost(); showResult(); }
+  else if (G.phase === "result") {
+    showScreen("result"); closeModal(); closeHost(); showResult();
+    if (!resultSe) { resultSe = true; se("result"); }
+  }
 }
 
 /* 進行役だけに工具アイコンを出し、パネルを開いたままなら中身を最新にする */
@@ -1321,13 +1377,12 @@ const RULE_PAGES = [
     ["people",{ja:"ゲームの中で見えた「支え」は、現実の世界にもある。ふりかえりで、日本にいる私たちにできることを話してみよう。",en:"The support you saw in the game exists in the real world too. In reflection time, talk about what we can do."}],
   ]},
 ];
-function renderRules(page) {
+function rulePageHtml(page) {
   const pg = RULE_PAGES[page];
   const items = pg.items.map(([icon, tx]) => `<div class="rule-item"><span class="r-ic">${ic(icon)}</span><span>${L(tx)}</span></div>`).join("");
   const dots = RULE_PAGES.map((_, i) => `<span class="${i === page ? "on" : ""}"></span>`).join("");
   const last = page === RULE_PAGES.length - 1;
-  lastKey = "rules" + page;
-  openModal(`<div class="rule-page">
+  return `<div class="rule-page">
       <button class="rule-close" id="ruleClose">✕</button>
       ${tagChip(pg.type, L(pg.tag))}
       <h2>${L(pg.title)}</h2>
@@ -1336,7 +1391,43 @@ function renderRules(page) {
       <div class="rule-nav">
         ${page > 0 ? `<button class="m-btn ghost" id="rulePrev">${ja() ? "← まえ" : "← Back"}</button>` : ""}
         ${last ? `<button class="m-btn" id="ruleDone">${ja() ? "OK！" : "OK!"}</button>` : `<button class="m-btn" id="ruleNext">${ja() ? "つぎへ →" : "Next →"}</button>`}
-      </div></div>`);
+      </div></div>`;
+}
+
+/* ページをめくるたびに「つぎへ」が上下に動くと、押しまちがえる。
+   ぜんぶのページを画面の外で一度だけ測って、いちばん高いページに高さをそろえる。
+   （言語と横幅が変われば測りなおす） */
+let ruleH = { key: "", h: 0 };
+function rulesMinHeight(width) {
+  const key = `${lang}|${Math.round(width)}`;
+  if (ruleH.key === key) return ruleH.h;
+  const probe = document.createElement("div");
+  probe.className = "modal";
+  probe.style.cssText = `position:absolute; left:-9999px; top:0; visibility:hidden;`
+    + `width:${width}px; max-height:none; height:auto; overflow:visible; animation:none;`;
+  document.body.appendChild(probe);
+  let h = 0;
+  try {
+    RULE_PAGES.forEach((_, i) => {
+      probe.innerHTML = rulePageHtml(i);
+      h = Math.max(h, probe.firstElementChild.offsetHeight);
+    });
+  } catch (e) { h = 0; }
+  probe.remove();
+  /* 書体がまだ読みこみ中だと高さがずれるので、そのときは覚えこまない */
+  const fontsReady = !document.fonts || document.fonts.status === "loaded";
+  ruleH = { key: fontsReady ? key : "", h };
+  return h;
+}
+
+function renderRules(page) {
+  lastKey = "rules" + page;
+  const last = page === RULE_PAGES.length - 1;
+  openModal(rulePageHtml(page));
+  /* 開いてから測る（モーダルの横幅が決まっていないと測れない） */
+  const box = $("modalBox"), body = box.firstElementChild;
+  const h = rulesMinHeight(box.getBoundingClientRect().width);
+  if (h) body.style.minHeight = h + "px";
   $("ruleClose").onclick = () => { closeModal(); render(); };
   if ($("rulePrev")) $("rulePrev").onclick = () => renderRules(page - 1);
   if (last) $("ruleDone").onclick = () => { closeModal(); render(); };
@@ -1357,6 +1448,7 @@ function previewGame({ screen, state, you, pid, room, lang: previewLang, modal, 
   diceBusy = false;
   shown = {};
   lastKey = "";
+  resultSe = false;
   closeModal();
   closeHost();
   $("diceStage").classList.remove("on");
