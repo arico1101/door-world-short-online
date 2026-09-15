@@ -270,6 +270,7 @@ Cloudflare Workers + Durable Objects（無料枠）。
 | `test/ops.mjs` | 進行役むけ操作と、選択肢の秘匿のテスト |
 | `test/short.mjs` | **ショート版だけのテスト**（下記） |
 | `wrangler.toml` | Durable Object は SQLite バックエンド（無料枠の条件） |
+| `.github/workflows/deploy.yml` | `main` に入った変更を公開URLへ自動デプロイ |
 | `slides.html` | **検証会の進行スライド**（全30枚）。ブラウザで開いて `F` で全画面、`←`/`→` かタップで送る |
 | `slides/*.png` | スライドに貼ったゲーム画面のスクリーンショット（PC・1440×900で撮影）。`slides.html` と同じ場所に置いたまま使う |
 | `SLIDES_SCRIPT.md` | 上の読み上げ台本と進行メモ。**会のまえに必ず読むこと**（当事者への配慮の項がある） |
@@ -309,6 +310,11 @@ node test/short.mjs
 **公開URL： https://tobira-short.tobira-online.workers.dev** （2026-09-10 デプロイずみ）
 
 本番オンライン版（`https://tobira-online.tobira-online.workers.dev`）とは別のWorkerなので、上書きの心配はない（`wrangler.toml` の `name` が `tobira-short`）。
+
+**`main` に入った変更は、GitHub Actions（`.github/workflows/deploy.yml`）が自動で公開URLへ反映する。**
+PRをマージしたら、それだけで公開版が新しくなる。Actionsの画面から手で流すこともできる（Run workflow）。
+
+手元から出すときは：
 
 ```bash
 npx wrangler deploy
