@@ -42,14 +42,45 @@ def set_font(run, size_px, color, bold):
 ALIGN = {'left': PP_ALIGN.LEFT, 'start': PP_ALIGN.LEFT, 'center': PP_ALIGN.CENTER,
          'right': PP_ALIGN.RIGHT, 'end': PP_ALIGN.RIGHT, 'justify': PP_ALIGN.JUSTIFY}
 
+def load_notes(repo):
+    """SLIDES_SCRIPT.md をページごとに切り出して、発表者ノート用の素の文にする。"""
+    path = os.path.join(repo, 'SLIDES_SCRIPT.md')
+    if not os.path.exists(path):
+        return {}
+    src = io.open(path, encoding='utf-8').read()
+    parts = re.split(r'^## (\d+)\. (.+)$', src, flags=re.M)
+    notes = {}
+    for i in range(1, len(parts), 3):
+        num, title, body = int(parts[i]), parts[i + 1].strip(), parts[i + 2]
+        lines = []
+        for line in body.splitlines():
+            line = line.rstrip()
+            if line.strip() in ('---', ''):
+                lines.append('')
+                continue
+            if line.startswith('# '):          # 次のパートの見出しは入れない
+                continue
+            line = re.sub(r'^>\s?', '', line)   # 読み上げの引用記号を外す
+            line = re.sub(r'\*\*(.+?)\*\*', r'\1', line)
+            line = re.sub(r'`(.+?)`', r'\1', line)
+            lines.append(line)
+        text = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip()
+        notes[num] = ('%d. %s\n\n%s' % (num, title, text))[:4800]
+    return notes
+
+
 def build(data, out):
     prs = Presentation()
     prs.slide_width, prs.slide_height = px(W), px(H)
     blank = prs.slide_layouts[6]
     imap = json.load(io.open(os.path.join(SCR, 'icon_map.json'), encoding='utf-8'))
+    notes = load_notes(os.environ.get('TOBIRA_REPO', os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
     for page in data['pages']:
         sl = prs.slides.add_slide(blank)
+        note = notes.get(page['p'])
+        if note:
+            sl.notes_slide.notes_text_frame.text = note
         bg = sl.background.fill; bg.solid(); bg.fore_color.rgb = RGBColor.from_string(PAGE_BG)
         items = page['items']
         order = ([i for i in items if i['k'] == 'box'] + [i for i in items if i['k'] == 'hl'] +
