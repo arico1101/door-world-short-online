@@ -163,6 +163,25 @@
 家庭カードの6枚は、カード部分だけ切り出している（`sips -c 1120 1480 --cropOffset 330 700`）。
 盤面が背後に残るのでPC画面と分かる。
 
+## Canva版の作りかた（スライドを直したら、ここもやりなおす）
+
+Canva版は `slides.html` から**PDFを経由して**取り込む。HTMLを直接取り込むと
+中身だけ抜き出されて組み直され、図版が落ちて判型も崩れるので使わないこと。
+
+1. `slides-canva.html` を作りなおす。`slides.html` から機械的に変換したもので、
+   全スライドを表示にして、各 `<section>` に `data-document-role="page"` と
+   `data-label` を付け、ナビゲーションのスクリプトを落としてある
+2. 印刷用CSSを足して 1440×810px 固定にし、**ぼかし影を消す**
+   （`:root{--sh:none; --sh-l:none}`。Chromeの `--print-to-pdf` は box-shadow を
+   画像に焼いてしまい、Canvaで不透明な濃い枠として出る。
+   `.lead b` の黄色いマーカーは inset 指定なので、これでは消えない）
+3. ヘッドレスChromeの `--print-to-pdf` で `slides.pdf` に書き出す（27ページ・16:9）
+4. `slides.pdf` をコミットして push。**コミットのSHAを指した raw URL** で取り込む
+   （`main` を指すとCDNのキャッシュで古いPDFが返る）
+5. Canvaの `import-design-from-url` に、そのURLを渡す
+
+取り込んだ結果は 1440×811px・27ページで、**文字はテキストのまま編集できる**。
+
 ## コンテキスト
 
 - リポジトリ：`/Users/arisa/door-world-short`（github.com/arico1101/**door-world-short-online**。フォルダ名とリポジトリ名が違うので注意）
