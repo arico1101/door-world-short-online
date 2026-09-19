@@ -166,14 +166,38 @@ def build(data, out):
                         if lh and lh.endswith('px'): p.line_spacing = pt(float(lh[:-2]))
                     except Exception: pass
                     return p
+                # HTMLは行頭・行末の空白と改行を詰めて描くので、段落ごとに同じ処理をする。
+                # アイコンよけに入れた全角空白（pad）はそのまま残す。
+                groups, cur = [], []
                 for r in it['runs']:
                     if r.get('br'):
-                        para = new_para(); continue
-                    run = para.add_run()
-                    run.text = r['s']
-                    try: fw = int(r.get('fw', 400))
-                    except Exception: fw = 700
-                    set_font(run, r.get('fs', it['fs']), r.get('c'), fw >= 600)
+                        groups.append(cur); cur = []
+                    else:
+                        cur.append(r)
+                groups.append(cur)
+                for gi, grp in enumerate(groups):
+                    grp = [dict(r) for r in grp]
+                    for r in grp:
+                        if not r.get('pad'):
+                            r['s'] = re.sub(r'\n\s*', '', r['s'])
+                    while grp and not grp[0].get('pad') and not grp[0]['s'].strip():
+                        grp.pop(0)
+                    while grp and not grp[-1].get('pad') and not grp[-1]['s'].strip():
+                        grp.pop()
+                    if grp:
+                        if not grp[0].get('pad'): grp[0]['s'] = grp[0]['s'].lstrip()
+                        if not grp[-1].get('pad'): grp[-1]['s'] = grp[-1]['s'].rstrip()
+                    groups[gi] = grp
+                first = True
+                for grp in groups:
+                    if not first: para = new_para()
+                    first = False
+                    for r in grp:
+                        run = para.add_run()
+                        run.text = r['s']
+                        try: fw = int(r.get('fw', 400))
+                        except Exception: fw = 700
+                        set_font(run, r.get('fs', it['fs']), r.get('c'), fw >= 600)
     prs.save(out)
     return out
 
