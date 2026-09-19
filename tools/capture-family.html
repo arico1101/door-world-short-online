@@ -1,0 +1,49 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>LOADING</title>
+<!-- 家庭カードのスクリーンショットを撮るためのページ。
+     Storybook を立てずに、ゲーム本体を直接 iframe で描いて
+     storybook/fixtures.js の状態を流しこむ。
+     使い方:  /tools/capture-family.html?k=western   （k は scenarios.family のキー） -->
+<style>html,body{margin:0;padding:0;background:#F2F9FD}
+iframe{display:block;width:1440px;height:900px;border:0}</style>
+<script type="module">
+import { scenarios } from "/storybook/fixtures.js";
+
+const key = new URLSearchParams(location.search).get("k") || "western";
+const sc = scenarios.family[key];
+if (!sc) { document.title = "NOSCENARIO"; throw new Error("unknown scenario: " + key); }
+
+const snapshot = sc.state || sc;
+const state = snapshot.g || snapshot.game || snapshot;
+const pid = sc.pid || snapshot.pid;
+
+const frame = document.createElement("iframe");
+const q = new URLSearchParams({ storybook: "1" });
+if (pid) q.set("pid", pid);
+frame.src = "/public/index.html?" + q;
+document.body.appendChild(frame);
+
+frame.addEventListener("load", () => {
+  const api = frame.contentWindow?.__tobira;
+  if (!api?.preview) { document.title = "NOAPI"; return; }
+  api.preview({
+    screen: sc.view || sc.screen,
+    state, you: sc.you ?? snapshot.you, pid,
+    room: sc.room || snapshot.room,
+    lang: "ja",
+    modal: sc.modal, modalOptions: sc,
+    dice: sc.dice, diceValue: sc.diceValue,
+  });
+  // 中のカードが描き終わってから撮りたいので、幅が出るまで待って知らせる
+  const started = Date.now();
+  const tick = setInterval(() => {
+    const box = frame.contentDocument?.getElementById("modalBox");
+    if (box && box.getBoundingClientRect().width > 10) {
+      clearInterval(tick); document.title = "READY";
+    } else if (Date.now() - started > 15000) {
+      clearInterval(tick); document.title = "TIMEOUT";
+    }
+  }, 100);
+}, { once: true });
+</script>

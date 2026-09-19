@@ -160,8 +160,26 @@
 | `result` | `11-results-end-of-game--multiplayer` |
 | `reveal` | `12-reveal-individual-player--mixed-door-states` |
 
-家庭カードの6枚は、カード部分だけ切り出している（`sips -c 1120 1480 --cropOffset 330 700`）。
-盤面が背後に残るのでPC画面と分かる。
+家庭カードの6枚は、カード部分だけ切り出している（`sips -c 1120 1480 --cropOffset 330 700`
+→ `sips --resampleWidth 900`）。盤面が背後に残るのでPC画面と分かる。
+
+**家庭カードだけは Storybook を立てずに撮れる。** `tools/capture-family.html` が
+ゲーム本体を直接 iframe で描き、`storybook/fixtures.js` の状態を流しこむ。
+
+```bash
+python3 -m http.server 8793          # リポジトリの直下で
+for k in western japan uganda expat orphanWithSupport orphanWithoutSupport; do
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu \
+    --no-sandbox --hide-scrollbars --window-size=1440,900 --force-device-scale-factor=2 \
+    --virtual-time-budget=20000 --screenshot="$k.png" \
+    "http://127.0.0.1:8793/tools/capture-family.html?k=$k"
+done
+```
+
+**カードの帯の色は、家庭ごとに変えてある**（2026-09-19）。`familyCardScenarios` で
+見る人の席を1つずつずらしているため。6枚を並べたときにカードの違いが見分けやすい。
+プレイヤー色は4つしかないので、5枚目・6枚目は1枚目・2枚目と同じ色に戻る。
+並べたときの隣どうしは、すべて違う色になる。
 
 ## Canva版の作りかた（スライドを直したら、これを走らせる）
 

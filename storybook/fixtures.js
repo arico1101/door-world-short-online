@@ -133,15 +133,22 @@ const info = (player, type, title, body, fx = {}, note = null, pnote = null) => 
   kind: "info", for: player.id, type, title, body, note, pnote, fx,
 });
 
-export const familyCardScenarios = R.FAMILIES.map((family, index) => ({
-  id: `family-${family.id}`, name: family.name.ja,
-  state: createState({
-    game: createGame({ phase: "cards", players: Array.from({ length: 4 }, (_, i) => createPlayer(i, {
-      familyId: i === 0 ? family.id : ["w1", "w2", "w5", "w6"][i % 4], seen: i !== 0,
-    })) }),
-    viewerId: PLAYER_IDS[0],
-  }),
-}));
+/* 家庭カードは、家庭ごとに見る人の席を1つずつずらす。
+   席によってプレイヤー色（R.PCOLORS）と名前・顔が変わるので、
+   6枚を並べたときにカードの違いが見分けやすくなる。
+   色は4つしかないので、5枚目・6枚目は1枚目・2枚目と同じ色に戻る。 */
+export const familyCardScenarios = R.FAMILIES.map((family, index) => {
+  const me = index % R.PCOLORS.length;
+  return {
+    id: `family-${family.id}`, name: family.name.ja,
+    state: createState({
+      game: createGame({ phase: "cards", players: Array.from({ length: 4 }, (_, i) => createPlayer(i, {
+        familyId: i === me ? family.id : ["w1", "w2", "w5", "w6"][i % 4], seen: i !== me,
+      })) }),
+      viewerId: PLAYER_IDS[me],
+    }),
+  };
+});
 
 export const choiceScenarios = [
   ["shinro", "w1"], ["shinro", "w6"],
