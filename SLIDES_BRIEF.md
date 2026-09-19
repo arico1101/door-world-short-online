@@ -118,20 +118,36 @@
 
 ## スクリーンショットの撮りかた（`slides/*.png` を撮りなおすとき）
 
-ゲームの見た目を変えたら、スライドの図も撮りなおす。手順：
+ゲームの見た目を変えたら、スライドの図も撮りなおす。**Storybookから撮るのがいちばん確実**——
+ストーリーは実物のゲーム画面をiframeで描き、`window.__tobira.preview()` で状態を流しこむので、
+一時フックもwranglerも要らない。
 
-1. `public/app.js` の末尾に一時フックを足す。`?shot=<名前>` を読んで、目的の画面まで自動で進め、
-   終わったら `window.__shotReady = true` を立てる。`&bare=1` で背景とヘッダーを消し、モーダルだけにする
-2. `npx wrangler dev` を起動
-3. ヘッドレスChromeをCDP（`--remote-debugging-port`）で叩き、`__shotReady` が立つまで**実時間で待って**
-   `Page.captureScreenshot` の `clip` で要素だけ切り出す。
-   **`--virtual-time-budget` は使わない**——WebSocketの往復を待たずに仮想時間が進み、描画途中で撮れてしまう
-4. `sips --resampleWidth <幅>` で縮める（`-Z` は長辺基準なので縦長の画面が潰れる。使わないこと）
-5. **`git checkout public/app.js` でフックを必ず戻す**
+1. `npm run storybook`（6006番）
+2. `http://localhost:6006/index.json` でストーリーIDを確認
+3. ヘッドレスChromeをCDP（`--remote-debugging-port`）で叩き、
+   `iframe.html?id=<ID>&viewMode=story&globals=locale:ja` を 1440×900・`deviceScaleFactor:2` で開く
+4. **内側のiframeが描き終わるまで実時間で待つ**
+   （`document.querySelector('iframe').contentDocument` の `.screen.active` に中身が入るまで。
+   モーダルつきなら `#modalBox` の幅が10px超になるまで）。
+   **`--virtual-time-budget` は使わない**——描画途中で撮れてしまう
+5. `sips --resampleWidth <幅>` で縮める（`-Z` は長辺基準なので縦長が潰れる。使わないこと）
 
-撮る画面：`lobby` / `fam1`〜`fam6`（6種の家庭カード）/ `board` / `choice`（開ける・🔒・？？？が並ぶ大学のトビラ）/
-`money`（かせぎの式）/ `talk`（はなしあい）/ `result` / `reveal`。
-盤面はタイルがアニメーションで出るので、`#board` に「ゴール」の文字が出るまで待ってから撮ること。
+使っているストーリー：
+
+| ファイル | ストーリーID |
+| --- | --- |
+| `lobby` | `01-lobby-room-entry--initial` |
+| `fam1`〜`fam6` | `05-family-card-family-variants--western / japan / uganda / expat / orphan-with-support / orphan-without-support` |
+| `board` | `03-game-board-turn-states--dice-turn` |
+| `choicelist` | `08-doors-availability-and-confirmation--choice-list-mixed` |
+| `confirmlock` | `08-doors-availability-and-confirmation--confirm-locked-money` |
+| `money` | `06-events-information-and-status-changes--income-gain` |
+| `talk` | `06-events-information-and-status-changes--talk-together` |
+| `result` | `11-results-end-of-game--multiplayer` |
+| `reveal` | `12-reveal-individual-player--mixed-door-states` |
+
+家庭カードの6枚は、カード部分だけ切り出している（`sips -c 1120 1480 --cropOffset 330 700`）。
+盤面が背後に残るのでPC画面と分かる。
 
 ## コンテキスト
 

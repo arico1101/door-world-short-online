@@ -282,9 +282,9 @@ Cloudflare Workers + Durable Objects（無料枠）。
 スライドは**ゲーム本体と同じデザイン**（`#F2F9FD` 地・Zen Maru Gothic・絵文字なしのSVGアイコン）で作ってある。
 アイコンは `public/index.html` のスプライトをそのままコピーしているので、**ゲーム側のアイコンを変えたら貼りなおすこと**。
 
-`slides/*.png` は、`?shot=<名前>` で目的の画面まで自動で進める一時フックを `public/app.js` に足し、
-ヘッドレスChromeをCDPで叩いて撮ったもの（フックはコミットしていない）。撮りなおす手順は
-`SLIDES_BRIEF.md` の「スクリーンショットの撮りかた」を参照。
+`slides/*.png` は**Storybookのストーリーから撮っている**。ストーリーは実物のゲーム画面を
+iframeで描いて `window.__tobira.preview()` で状態を流しこむ作りなので、**一時フックはもう要らない**。
+撮りなおす手順は `SLIDES_BRIEF.md` の「スクリーンショットの撮りかた」を参照。
 
 ## テスト
 

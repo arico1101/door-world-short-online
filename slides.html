@@ -109,6 +109,11 @@ h1 .em-g{color:var(--money);}
 
 /* 横長スクリーンショットを大きく見せる積みレイアウト */
 .figstack{display:flex; flex-direction:column; align-items:center; gap:1.6vmin; width:100%; min-height:0; flex:1;}
+.figpair{display:flex; align-items:center; justify-content:center; gap:1.6vmin; width:100%; min-height:0; flex:1;}
+.figpair figure{display:flex; flex-direction:column; align-items:center; gap:.8vmin; min-height:0; height:100%; flex:1 1 0;}
+.figpair img{min-height:0; flex:1; width:100%; object-fit:contain;}
+.figpair figcaption{font-size:1.9vmin; font-weight:900; color:var(--btn);}
+.figpair .arrow{flex:none; font-size:4vmin; font-weight:900; color:var(--pink);}
 .figstack .fig{min-height:0; flex:1; width:100%; display:flex; align-items:center; justify-content:center;}
 .figstack .fig img{max-width:100%; max-height:100%; min-height:0; object-fit:contain;}
 .notes{display:grid; grid-template-columns:repeat(3,1fr); gap:1.4vmin; width:92vw; max-width:1600px;}
@@ -296,7 +301,7 @@ h1 .em-g{color:var(--money);}
     <figure><img class="shot" src="slides/fam5.png" alt="支援と出会えた、ウガンダの遺児の家庭"><figcaption>遺児・<b>支援と出会えた</b>：はじめ20万／基本給10万＋★×5万</figcaption></figure>
     <figure><img class="shot" src="slides/fam6.png" alt="まだ支援と出会えていない、ウガンダの遺児の家庭"><figcaption>遺児・<b>まだ出会えていない</b>：数字は左とまったく同じ</figcaption></figure>
   </div>
-  <p class="lead">ウガンダ育ちは<b>★1つが5万</b>、それ以外は10万——同じ学びでも、実り方が違う。<br>下の2枚は数字がまったく同じで、違うのは<b>支援を知っているかどうか</b>だけ。</p>
+  <p class="lead">カードに出るのは<b>物語・いまの持ちもの・とくい</b>だけ。<br>下に書いた<b>基本給と掛け率は、画面には出ないまま</b>ずっと効き続けます。</p>
 </section>
 
 <!-- ========== 6. 今日いちばん見てほしいこと ========== -->
@@ -373,14 +378,18 @@ h1 .em-g{color:var(--money);}
 <section class="slide" data-part="ルール" data-ic="door">
   <div class="kicker pink"><svg class="ic"><use href="#ic-door"/></svg>トビラとカギ — ここがこのゲームの核心</div>
   <div class="figstack">
-    <div class="fig"><img class="shot" src="slides/choice.png" alt="トビラの選択画面"></div>
+    <div class="figpair">
+      <figure><img class="shot" src="slides/choicelist.png" alt="トビラの選択肢一覧"><figcaption>1. どの道を選ぶか</figcaption></figure>
+      <span class="arrow">→</span>
+      <figure><img class="shot" src="slides/confirmlock.png" alt="カギが足りなかった確認画面"><figcaption>2. 開くかどうかは、選んでから分かる</figcaption></figure>
+    </div>
     <div class="notes">
-      <div class="note"><span class="t" style="color:#4CA872"><svg class="ic"><use href="#ic-door"/></svg>開ける</span>
-        <span class="d">カギ（おかね・★まなび）が足りている。0円の道はいつでも選べる</span></div>
-      <div class="note"><span class="t" style="color:#C98A3C"><svg class="ic"><use href="#ic-lock"/></svg>カギ不足</span>
-        <span class="d">見えてはいる。でも、いま足りない</span></div>
+      <div class="note"><span class="t"><svg class="ic" style="color:var(--pink)"><use href="#ic-door"/></svg>一覧に出るのは名前だけ</span>
+        <span class="d">カギがいくつ必要かは、ここでは分からない</span></div>
+      <div class="note"><span class="t" style="color:#C98A3C"><svg class="ic"><use href="#ic-lock"/></svg>選んで、はじめて分かる</span>
+        <span class="d">カギが足りなければ「このトビラは開かなかった」。カギの要らない道は必ず選べる</span></div>
       <div class="note"><span class="t" style="color:#7E6BC4"><svg class="ic"><use href="#ic-eye"/></svg>？？？</span>
-        <span class="d">そもそも中身が見えない。何があったのかも分からない</span></div>
+        <span class="d">そもそも中身が見えない。選ぶことすらできない</span></div>
     </div>
   </div>
 </section>
@@ -392,7 +401,7 @@ h1 .em-g{color:var(--money);}
     <div class="fig"><img class="shot" src="slides/money.png" alt="おしごとマスの画面"></div>
     <div class="band" style="font-size:2.7vmin;">
       かせぎ ＝ <span class="hi-b">基本給</span> ＋ ★まなび × <span class="hi-b">掛け率</span> ＋ 仕送り<br>
-      <span style="font-size:2.2vmin; font-weight:700;">この基本給も掛け率も、<span class="hi">家庭カードで決まっています</span>。同じマス・同じ★でも、入るお金は違う</span>
+      <span style="font-size:2.2vmin; font-weight:700;">この基本給も掛け率も、<span class="hi">生まれた場所で決まっています</span>。<br>カードには出てきません。<b>この画面ではじめて見える数字</b>です</span>
     </div>
   </div>
 </section>
