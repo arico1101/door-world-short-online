@@ -153,6 +153,12 @@ h1 .em-g{color:var(--money);}
   font-size:2.9vmin; font-weight:900; display:flex; flex-direction:column; gap:.4vmin;}
 .chain .c-box small{font-size:1.8vmin; font-weight:700; color:var(--sub);}
 .chain .c-arrow{display:grid; place-items:center; font-size:3.4vmin; color:var(--pink); font-weight:900;}
+.chain .c-box .ct{display:flex; align-items:center; justify-content:center; gap:.8vmin;}
+.chain.four{flex-wrap:nowrap; width:94vw; max-width:1600px;}
+.chain.four .c-box{flex:1 1 0; min-width:0; max-width:none; text-align:center;
+  font-size:2.45vmin; padding:2.1vmin 1.8vmin; gap:.8vmin;}
+.chain.four .c-box small{font-size:1.7vmin; line-height:1.55;}
+.chain.four .c-arrow{flex:none; font-size:2.9vmin;}
 
 /* ---------- タイマー ---------- */
 #timer{font-size:17vmin; line-height:1; font-weight:900; letter-spacing:.02em; color:var(--btn);}
@@ -354,7 +360,28 @@ h1 .em-g{color:var(--money);}
   </div>
 </section>
 
-<!-- ========== 10. マスの種類 ========== -->
+<!-- ========== 10. ゲームの流れ ========== -->
+<section class="slide" data-part="ルール" data-ic="die">
+  <div class="kicker learn"><svg class="ic"><use href="#ic-die"/></svg>ゲームの流れ</div>
+  <h1>くりかえすのは、<span class="em">この4つ</span></h1>
+  <div class="chain four">
+    <div class="c-box"><span class="ct"><svg class="ic"><use href="#ic-die"/></svg>サイコロを転がす</span>
+      <small>15歳から。それまでは「一歩すすむ」で1マスずつ</small></div>
+    <div class="c-arrow">→</div>
+    <div class="c-box"><span class="ct"><svg class="ic"><use href="#ic-bolt"/></svg>止まったマスで、できごと</span>
+      <small>おしごと・しゅっぴ・できごと・まなび・トビラ</small></div>
+    <div class="c-arrow">→</div>
+    <div class="c-box"><span class="ct"><svg class="ic"><use href="#ic-coin"/></svg>おかねと★まなびが動く</span>
+      <small>増えることも、減ることもある</small></div>
+    <div class="c-arrow">→</div>
+    <div class="c-box"><span class="ct"><svg class="ic"><use href="#ic-goal"/></svg>25歳でゴール</span>
+      <small>そのときの♥ハッピーで順位が決まる</small></div>
+  </div>
+  <p class="lead">おかねも★まなびも、<b>それ自体は順位になりません</b>。<br>
+    順位を決めるのは、ゴール時点の<b>♥ハッピー</b>です。</p>
+</section>
+
+<!-- ========== 11. マスの種類 ========== -->
 <section class="slide" data-part="ルール" data-ic="die">
   <div class="kicker learn"><svg class="ic"><use href="#ic-die"/></svg>マスの種類は6つ</div>
   <div class="legend">
@@ -374,7 +401,7 @@ h1 .em-g{color:var(--money);}
   <p class="small">止まったマスの指示に従い、OKを押すと次の人の番になります</p>
 </section>
 
-<!-- ========== 11. トビラとカギ ========== -->
+<!-- ========== 12. トビラとカギ ========== -->
 <section class="slide" data-part="ルール" data-ic="door">
   <div class="kicker pink"><svg class="ic"><use href="#ic-door"/></svg>トビラとカギ — ここがこのゲームの核心</div>
   <div class="figstack">
@@ -394,7 +421,7 @@ h1 .em-g{color:var(--money);}
   </div>
 </section>
 
-<!-- ========== 12. 同じ★でも、入るお金がちがう ========== -->
+<!-- ========== 13. 同じ★でも、入るお金がちがう ========== -->
 <section class="slide" data-part="ルール" data-ic="coin">
   <div class="kicker gold"><svg class="ic"><use href="#ic-coin"/></svg>同じ★でも、入るお金がちがう</div>
   <div class="figstack">
@@ -407,7 +434,7 @@ h1 .em-g{color:var(--money);}
   </div>
 </section>
 
-<!-- ========== 13. 奨学金と順位 ========== -->
+<!-- ========== 14. 奨学金と順位 ========== -->
 <section class="slide" data-part="ルール" data-ic="cap">
   <div class="kicker learn"><svg class="ic"><use href="#ic-cap"/></svg>奨学金と、順位の決まり方</div>
   <div class="steps">
@@ -417,7 +444,7 @@ h1 .em-g{color:var(--money);}
   <p class="small">おかねと★まなびは、♥を得るための「カギ」。目的ではなく手段です</p>
 </section>
 
-<!-- ========== 14. プレイタイム ========== -->
+<!-- ========== 15. プレイタイム ========== -->
 <section class="slide" data-part="ゲーム" data-ic="walk">
   <div class="kicker pink"><svg class="ic"><use href="#ic-walk"/></svg>プレイタイム</div>
   <div id="timer">25:00</div>
@@ -436,7 +463,7 @@ h1 .em-g{color:var(--money);}
   <p class="url-mini" id="urlMini">— 記入 —</p>
 </section>
 
-<!-- ========== 15. 結果を全員で見る ========== -->
+<!-- ========== 16. 結果を全員で見る ========== -->
 <section class="slide" data-part="振り返り" data-ic="goal">
   <div class="kicker"><svg class="ic"><use href="#ic-goal"/></svg>まず、結果を全員で見ます</div>
   <div class="figstack">
@@ -452,7 +479,7 @@ h1 .em-g{color:var(--money);}
   </div>
 </section>
 
-<!-- ========== 16. 誰が何を選んだか ========== -->
+<!-- ========== 17. 誰が何を選んだか ========== -->
 <section class="slide" data-part="振り返り" data-ic="door">
   <div class="kicker pink"><svg class="ic"><use href="#ic-door"/></svg>誰が、どの扉を選んだのか</div>
   <div class="figstack">
@@ -466,42 +493,42 @@ h1 .em-g{color:var(--money);}
   </div>
 </section>
 
-<!-- ========== 17. 問い1 ========== -->
+<!-- ========== 18. 問い1 ========== -->
 <section class="slide" data-part="振り返り" data-ic="people">
   <div class="q-no">問い 1</div>
   <p class="q-text">結果画面で、<b>★の数が近い人</b>を2人さがしてください。<br>おかねの増え方は、同じでしたか？<br>それは本人の<b>努力のちがい</b>だろうか？</p>
   <p class="q-where"><svg class="ic"><use href="#ic-coin"/></svg>基本給は20万と10万、★1つは10万と5万。どちらも生まれた場所で決まっていた</p>
 </section>
 
-<!-- ========== 18. 問い2 ========== -->
+<!-- ========== 19. 問い2 ========== -->
 <section class="slide" data-part="振り返り" data-ic="people">
   <div class="q-no">問い 2</div>
   <p class="q-text">自分のカードの<b>「見えていなかった ◯」</b>を<br>読み上げてください。<br>チームで数字がちがいます。<b>何が</b>その差をつくった？</p>
   <p class="q-where"><svg class="ic"><use href="#ic-eye"/></svg>結果画面の帯グラフ。紫の部分の数字です</p>
 </section>
 
-<!-- ========== 19. 問い3 ========== -->
+<!-- ========== 20. 問い3 ========== -->
 <section class="slide" data-part="振り返り" data-ic="people">
   <div class="q-no">問い 3</div>
   <p class="q-text">ウガンダの遺児の家庭だった人のネタバラシを、<br><b>全員が自分の画面で</b>開いてください。<br>その人には、何が<b>「見えて」</b>いた？</p>
   <p class="q-where"><svg class="ic"><use href="#ic-home"/></svg>本人に見せてもらう必要はありません。誰のぶんでも開けます</p>
 </section>
 
-<!-- ========== 20. 問い4 ========== -->
+<!-- ========== 21. 問い4 ========== -->
 <section class="slide" data-part="振り返り" data-ic="people">
   <div class="q-no">問い 4</div>
   <p class="q-text">今日あなたが持ってきたもの——<br>スマホ、無料の教科書、給食。<br>それは、<b>どの家庭カードの世界</b>のものだった？</p>
   <p class="q-where"><svg class="ic"><use href="#ic-sun"/></svg>「3つの世界の朝」を思い出しながら</p>
 </section>
 
-<!-- ========== 21. 問い5 ========== -->
+<!-- ========== 22. 問い5 ========== -->
 <section class="slide" data-part="振り返り" data-ic="people">
   <div class="q-no">問い 5</div>
   <p class="q-text">日本にいる私たちが、<br>世界の遺児にわたせる<b>「カギ」</b>って、<br>何だろう？</p>
   <p class="q-where"><svg class="ic"><use href="#ic-heart"/></svg>正解はありません。話したくないことは話さなくて大丈夫です</p>
 </section>
 
-<!-- ========== 22. ゲームから現実へ ========== -->
+<!-- ========== 23. ゲームから現実へ ========== -->
 <section class="slide" data-part="振り返り" data-ic="globe">
   <div class="kicker pink"><svg class="ic"><use href="#ic-globe"/></svg>ゲームから現実へ</div>
   <h1>生まれた場所の差は、<br>連鎖していく</h1>
@@ -515,7 +542,7 @@ h1 .em-g{color:var(--money);}
   <p class="lead"><b>学べば報われる、は、場が用意されている人の話です。</b><br>そしてその差は、<b>次の世代の「生まれの差」</b>へ——。<br>ゲームで見た「？？？」も「カギ不足」も、いまの世界に実在します。</p>
 </section>
 
-<!-- ========== 23. だから支援がある ========== -->
+<!-- ========== 24. だから支援がある ========== -->
 <section class="slide" data-part="振り返り" data-ic="spark">
   <div class="kicker gold"><svg class="ic"><use href="#ic-spark"/></svg>だから、「支援」がある</div>
   <div class="steps">
@@ -527,14 +554,14 @@ h1 .em-g{color:var(--money);}
   <p class="small">ゲームでAAIを選んだ人は、お金を1円も払っていません。25歳のいま、その人がどこで何をしていたか、読んでみてください</p>
 </section>
 
-<!-- ========== 24. 検証の入り口 ========== -->
+<!-- ========== 25. 検証の入り口 ========== -->
 <section class="slide" data-part="検証" data-ic="tools">
   <div class="kicker"><svg class="ic"><use href="#ic-tools"/></svg>ここからは、検証です</div>
   <h1>今度は<span class="em-b">「届ける側」</span>として、<br>いまの75分を振り返ってください</h1>
   <p class="lead">このゲームは、まだ完成していません。<br>今日みなさんが感じた<b>引っかかり</b>が、そのまま改善点になります。</p>
 </section>
 
-<!-- ========== 25. 気になるところの洗い出し ========== -->
+<!-- ========== 26. 気になるところの洗い出し ========== -->
 <section class="slide" data-part="検証" data-ic="check">
   <div class="kicker"><svg class="ic"><use href="#ic-check"/></svg>気になるところを、全部出してください</div>
   <div class="legend" style="grid-template-columns:repeat(2,1fr); width:80vw;">
@@ -550,14 +577,14 @@ h1 .em-g{color:var(--money);}
   <p class="lead">数字のバランス、扉の選択肢、エンディングの文章——<br><b>「ここは違うと思う」を、遠慮なく</b>。</p>
 </section>
 
-<!-- ========== 26. 感想共有 ========== -->
+<!-- ========== 27. 感想共有 ========== -->
 <section class="slide" data-part="感想" data-ic="heart">
   <div class="kicker pink"><svg class="ic"><use href="#ic-heart"/></svg>最後に、感想を聞かせてください</div>
   <h1>うまく言葉にならなくても<br>かまいません</h1>
   <p class="lead">今日いちばん心に残った場面。<br>自分のカードを見たときのこと、他の人のカードを知ったときのこと。<br><b>街頭に立つときの言葉が、ひとつでも変わったなら</b>——それを聞かせてください。</p>
 </section>
 
-<!-- ========== 27. おわり ========== -->
+<!-- ========== 28. おわり ========== -->
 <section class="slide" data-part="おわり" data-ic="door">
   <div class="door-mark"><span></span></div>
   <h1 style="font-size:6.4vmin;">ありがとうございました</h1>
