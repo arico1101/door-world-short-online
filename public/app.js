@@ -992,7 +992,7 @@ function renderPending() {
       const cut = efx !== raw, redundant = o.req.money && efx === -em;
       const loan = o.special === "shogakukin" && !(p.shienDiscount || p.perk === "shienPro");
       const cost = ((efx || cut) && !redundant)
-        ? `<div class="d-cost ${efx < 0 ? "minus" : "plus"}">${ic("coin", "s")} ${ja() ? "おかね" : "Money"} ${cut ? `<s>${fm(raw)}</s>→` : ""}${efx > 0 ? "+" : ""}${fm(efx)}${loan ? (ja() ? "＋これから返済" : " + repayment from now on") : ""}</div>` : "";
+        ? `<div class="d-cost ${efx < 0 ? "minus" : "plus"}"><span class="m1">${ic("coin", "s")}</span>${cut ? `<s>${fm(raw)}</s>→` : ""}${efx > 0 ? "+" : ""}${fm(efx)}${loan ? (ja() ? "＋これから返済" : " + repayment from now on") : ""}</div>` : "";
       /* 何が足りないのかを取りちがえないように、理由ごとに書きわける */
       const short = (o.req.univ && !p.univ)
         ? (ja() ? "大学に行っていないので、この道はつづいていない" : "No degree — this road doesn't continue")
