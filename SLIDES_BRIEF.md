@@ -160,8 +160,15 @@
 | `result` | `11-results-end-of-game--multiplayer` |
 | `reveal` | `12-reveal-individual-player--mixed-door-states` |
 
-家庭カードの6枚は、カード部分だけ切り出している（`sips -c 1120 1480 --cropOffset 330 700`
+家庭カードの6枚は、カード部分だけ切り出している（`sips -c 1180 1560 --cropOffset 300 660`
 → `sips --resampleWidth 900`）。盤面が背後に残るのでPC画面と分かる。
+2026-11-18 にとくいの文面が長くなり、いちばん縦長の遺児・支援なしのカードが
+以前の枠（`-c 1120 1480 --cropOffset 330 700`）からはみ出したので、枠を広げた。
+
+**図を撮りなおしたら `slides.pptx` の中の画像も差しかえる。** レイアウトが変わらない
+（同じ寸法の画像を入れかえるだけの）ときは、`build-canva.py` を走らせなくても、
+pptx（zip）の `ppt/media/` の同じ画像を上書きすれば足りる（2026-11-18 はこの方法：
+fam1〜6 → image16/17/19/18/20/21、result → image53）。
 
 **家庭カードだけは Storybook を立てずに撮れる。** `tools/capture-family.html` が
 ゲーム本体を直接 iframe で描き、`storybook/fixtures.js` の状態を流しこむ。
